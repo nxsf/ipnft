@@ -29,7 +29,7 @@ contract IPNFT1155 is
     mapping(uint256 => bool) public isFinalized;
 
     /** If not zero, the token is considered {isRedeemable}. */
-    mapping(uint256 => uint64) public expiresAt;
+    mapping(uint256 => uint64) public expiredAt;
 
     constructor(IPNFT721 _ipnft) ERC1155("") {
         ipnft721 = _ipnft;
@@ -94,10 +94,10 @@ contract IPNFT1155 is
     }
 
     /**
-     * Return true if {expiresAt} of the token is not zero.
+     * Return true if {expiredAt} of the token is not zero.
      */
     function isRedeemable(uint256 tokenId) public view returns (bool) {
-        return expiresAt[tokenId] != 0;
+        return expiredAt[tokenId] != 0;
     }
 
     /**
@@ -106,7 +106,7 @@ contract IPNFT1155 is
      */
     function hasExpired(uint256 tokenId) public view returns (bool) {
         require(isRedeemable(tokenId), "IPNFT1155: not redeemable");
-        return block.timestamp > expiresAt[tokenId];
+        return block.timestamp > expiredAt[tokenId];
     }
 
     /**
@@ -192,21 +192,21 @@ contract IPNFT1155 is
 
     function _updateExpiredAt(uint256 id, uint64 expiredAt_) internal {
         require(
-            expiresAt[id] == 0 || block.timestamp < expiresAt[id],
+            expiredAt[id] == 0 || block.timestamp < expiredAt[id],
             "IPNFT1155: redeemable expired"
         );
 
         require(
             expiredAt_ > block.timestamp,
-            "IPNFT1155: expiresAt is less than current"
+            "IPNFT1155: expiredAt is less than current"
         );
 
         require(
-            expiredAt_ >= expiresAt[id],
-            "IPNFT1155: expiresAt is less than previous"
+            expiredAt_ >= expiredAt[id],
+            "IPNFT1155: expiredAt is less than previous"
         );
 
-        expiresAt[id] = expiredAt_;
+        expiredAt[id] = expiredAt_;
     }
 
     function _beforeTokenTransfer(
