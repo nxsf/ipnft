@@ -5,23 +5,23 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
 /**
- * @title Interplanetary Non-Fungible Token
+ * @title Interplanetary Non-Fungible Token: 721
  * @author Fancy Software <fancysoft.eth>
  *
- * An IPNFT represents a digital copyright for a DAG-CBOR IPFS CID,
+ * An IPNFT721 represents a digital copyright for a DAG-CBOR IPFS CID,
  * where a token ID is the 32-byte SHA-2-256 digest part of it.
  *
- * To {mint} an IPNFT with a specific identifier, one must prove
+ * To {mint} an IPNFT721 with a specific identifier, one must prove
  * the possession of the content containing a valid IPNFT tag.
  */
-contract IPNFT is ERC721, IERC2981 {
+contract IPNFT721 is ERC721, IERC2981 {
     /// Get an address minter nonce, used in {mint}.
     mapping(address => uint32) public minterNonce;
 
     /// Get a token royalty, which is calculated as `royalty / 255`.
     mapping(uint256 => uint8) public royalty;
 
-    constructor() ERC721("IPNFT", "IPNFT") {}
+    constructor() ERC721("IPNFT721", "IPNFT") {}
 
     /**
      * Claim an IPNFT ownership by proving that the root DAG-CBOR file
@@ -59,46 +59,49 @@ contract IPNFT is ERC721, IERC2981 {
     ) public {
         require(
             msg.sender == minter || isApprovedForAll(minter, msg.sender),
-            "IPNFT: not allowed"
+            "IPNFT721: not allowed"
         );
 
         // Check the content hash against the token ID.
         require(
             uint256(sha256(content)) == id,
-            "IPNFT: content hash mismatch"
+            "IPNFT721: content hash mismatch"
         );
 
         // Check the content length so that it may contain the tag.
-        require(content.length >= tagOffset + 80, "IPNFT: content too short");
+        require(
+            content.length >= tagOffset + 80,
+            "IPNFT721: content too short"
+        );
 
         // Check the tag version value.
         require(
             _bytesToUint32(content, tagOffset) == 0x65766D01,
-            "IPNFT: invalid tag version"
+            "IPNFT721: invalid tag version"
         );
 
         // Check the tag blockchain id value.
         require(
             _bytesToUint256(content, tagOffset + 4) == block.chainid,
-            "IPNFT: invalid blockchain id"
+            "IPNFT721: invalid blockchain id"
         );
 
         // Check the tag contract address.
         require(
             _bytesToAddress(content, tagOffset + 36) == address(this),
-            "IPNFT: invalid contract address"
+            "IPNFT721: invalid contract address"
         );
 
         // Check the tag minter address.
         require(
             _bytesToAddress(content, tagOffset + 56) == minter,
-            "IPNFT: invalid minter address"
+            "IPNFT721: invalid minter address"
         );
 
         // Check the tag minter nonce.
         require(
             _bytesToUint32(content, tagOffset + 76) == minterNonce[minter],
-            "IPNFT: invalid minter nonce"
+            "IPNFT721: invalid minter nonce"
         );
 
         // Increment the minter nonce.

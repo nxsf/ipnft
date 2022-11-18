@@ -1,8 +1,8 @@
 import { expect, use } from "chai";
 import { ethers } from "ethers";
 import { deployContract, MockProvider, solidity } from "ethereum-waffle";
-import ABI from "../../waffle/IPNFT.json";
-import { Ipnft } from "../../waffle/types/Ipnft";
+import ABI from "../../waffle/IPNFT721.json";
+import { Ipnft721 } from "../../waffle/types/Ipnft721";
 import * as DagCbor from "@ipld/dag-cbor";
 import { CID } from "multiformats";
 import { sha256 } from "multiformats/hashes/sha2";
@@ -14,10 +14,10 @@ describe("IPNFT", async () => {
   const provider = new MockProvider();
   const [w0, w1, w2] = provider.getWallets();
 
-  let ipnft: Ipnft;
+  let ipnft721: Ipnft721;
 
   before(async () => {
-    ipnft = (await deployContract(w0, ABI)) as Ipnft;
+    ipnft721 = (await deployContract(w0, ABI)) as Ipnft721;
   });
 
   describe("minting", () => {
@@ -26,7 +26,7 @@ describe("IPNFT", async () => {
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
         ipnft: ipnftTag(
           await getChainId(provider),
-          ipnft.address,
+          ipnft721.address,
           w0.address,
           0
         ),
@@ -35,14 +35,14 @@ describe("IPNFT", async () => {
       const multihash = await sha256.digest(content);
 
       await expect(
-        ipnft.mint(
+        ipnft721.mint(
           w0.address,
           multihash.digest,
           content,
           10, // This
           0
         )
-      ).to.be.revertedWith("IPNFT: invalid tag version");
+      ).to.be.revertedWith("IPNFT721: invalid tag version");
     });
 
     it("works", async () => {
@@ -50,7 +50,7 @@ describe("IPNFT", async () => {
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
         ipnft: ipnftTag(
           await getChainId(provider),
-          ipnft.address,
+          ipnft721.address,
           w0.address,
           0
         ),
@@ -58,13 +58,13 @@ describe("IPNFT", async () => {
 
       const multihash = await sha256.digest(content);
 
-      await ipnft.mint(w0.address, multihash.digest, content, 9, 10);
+      await ipnft721.mint(w0.address, multihash.digest, content, 9, 10);
 
-      expect(await ipnft.balanceOf(w0.address)).to.eq(1);
-      expect(await ipnft.ownerOf(multihash.digest)).to.eq(w0.address);
-      expect(await ipnft.minterNonce(w0.address)).to.eq(1);
+      expect(await ipnft721.balanceOf(w0.address)).to.eq(1);
+      expect(await ipnft721.ownerOf(multihash.digest)).to.eq(w0.address);
+      expect(await ipnft721.minterNonce(w0.address)).to.eq(1);
 
-      const royaltyInfo = await ipnft.royaltyInfo(
+      const royaltyInfo = await ipnft721.royaltyInfo(
         multihash.digest,
         ethers.utils.parseEther("1")
       );
@@ -80,7 +80,7 @@ describe("IPNFT", async () => {
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
         ipnft: ipnftTag(
           await getChainId(provider),
-          ipnft.address,
+          ipnft721.address,
           w0.address,
           0 // This
         ),
@@ -89,14 +89,14 @@ describe("IPNFT", async () => {
       const multihash = await sha256.digest(content);
 
       await expect(
-        ipnft.mint(w0.address, multihash.digest, content, 9, 10)
-      ).to.be.revertedWith("IPNFT: invalid minter nonce");
+        ipnft721.mint(w0.address, multihash.digest, content, 9, 10)
+      ).to.be.revertedWith("IPNFT721: invalid minter nonce");
     });
   });
 
   describe("uri", () => {
     it("works", async () => {
-      expect(await ipnft.tokenURI(0)).to.eq(
+      expect(await ipnft721.tokenURI(0)).to.eq(
         "http://f01711220{id}.ipfs/metadata.json"
       );
     });
