@@ -190,21 +190,24 @@ contract IPNFT1155 is
         return ipnft721.tokenURI(id);
     }
 
+    // TODO: Write tests.
     function _updateExpiredAt(uint256 id, uint64 expiredAt_) internal {
-        require(
-            expiredAt[id] == 0 || block.timestamp < expiredAt[id],
-            "IPNFT1155: redeemable expired"
-        );
-
-        require(
-            expiredAt_ > block.timestamp,
-            "IPNFT1155: expiredAt is less than current"
-        );
-
-        require(
-            expiredAt_ >= expiredAt[id],
-            "IPNFT1155: expiredAt is less than previous"
-        );
+        if (exists(id)) {
+            if (expiredAt[id] == 0) {
+                require(expiredAt_ == 0, "IPNFT1155: not redeemable");
+            } else {
+                require(
+                    expiredAt_ >= expiredAt[id],
+                    "IPNFT1155: expiredAt is less than current"
+                );
+                require(expiredAt_ > block.timestamp, "IPNFT1155: expired");
+            }
+        } else {
+            require(
+                expiredAt_ == 0 || expiredAt_ > block.timestamp,
+                "IPNFT1155: expired"
+            );
+        }
 
         expiredAt[id] = expiredAt_;
     }
