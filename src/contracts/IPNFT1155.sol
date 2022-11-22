@@ -14,7 +14,8 @@ import "./IPNFT721.sol";
  * @author Fancy Software <fancysoft.eth>
  *
  * IPNFT1155 is an ERC-1155 {IPNFT721} derivative that can be (optionally)
- * redeemed by sending it back to this contract.
+ * redeemed by sending it back to this contract. A token may also be a part
+ * of a {collection}, where a collection is a simple address.
  */
 contract IPNFT1155 is
     ERC1155,
@@ -24,6 +25,9 @@ contract IPNFT1155 is
     IERC2981
 {
     IPNFT721 public ipnft721;
+
+    /** A token may be a part of a collection defined by an address. */
+    mapping(uint256 => address) public collection;
 
     /** Once a token is finalized, it cannot be minted anymore. */
     mapping(uint256 => bool) public isFinalized;
@@ -38,7 +42,9 @@ contract IPNFT1155 is
     /**
      * Mint an IPNFT1155 token.
      *
-     * @param finalize   To irreversibly disable further minting for this token.
+     * @param collection_ A collection to make the token part of, if any.
+     * The caller must be approved on behalf of the collection.
+     * @param finalize To irreversibly disable further minting for this token.
      * @param expiredAt_ The timestamp the token ceases to be redeemable at.
      * May pass new value to update the expiration date.
      * If zero, the token is not considered redeemable.
@@ -47,6 +53,7 @@ contract IPNFT1155 is
         address to,
         uint256 id,
         uint256 amount,
+        address collection_,
         bool finalize,
         uint64 expiredAt_,
         bytes calldata data
@@ -61,7 +68,9 @@ contract IPNFT1155 is
         require(!isFinalized[id], "IPNFT1155: finalized");
         isFinalized[id] = finalize;
 
+        _updateCollection(id, collection_);
         _updateExpiredAt(id, expiredAt_);
+
         _mint(to, id, amount, data);
     }
 
@@ -72,6 +81,7 @@ contract IPNFT1155 is
         address to,
         uint256[] calldata ids,
         uint256[] calldata amounts,
+        address collection_,
         bool finalize,
         uint64 expiredAt_,
         bytes calldata data
@@ -87,6 +97,7 @@ contract IPNFT1155 is
             require(!isFinalized[ids[i]], "IPNFT1155: finalized");
             isFinalized[ids[i]] = finalize;
 
+            _updateCollection(ids[i], collection_);
             _updateExpiredAt(ids[i], expiredAt_);
         }
 
@@ -190,6 +201,23 @@ contract IPNFT1155 is
         returns (string memory)
     {
         return ipnft721.tokenURI(id);
+    }
+
+    function _updateCollection(uint256 id, address collection_) internal {
+        if (collection_ != address(0)) {
+            require(
+                msg.sender == collection_ ||
+                    isApprovedForAll(collection_, msg.sender),
+                "IPNFT1155: collection unauthorized"
+            );
+        }
+
+        require(
+            collection[id] == address(0) || collection[id] == collection_,
+            "IPNFT1155: collection mismatch"
+        );
+
+        collection[id] = collection_;
     }
 
     // TODO: Write tests.
