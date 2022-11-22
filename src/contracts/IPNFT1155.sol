@@ -95,8 +95,10 @@ contract IPNFT1155 is
 
     /**
      * Return true if {expiredAt} of the token is not zero.
+     * Reverts if the token does not {exists}.
      */
     function isRedeemable(uint256 tokenId) public view returns (bool) {
+        require(exists(tokenId), "IPNFT1155: does not exist");
         return expiredAt[tokenId] != 0;
     }
 
