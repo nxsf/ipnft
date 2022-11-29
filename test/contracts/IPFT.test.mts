@@ -35,6 +35,7 @@ describe("IPFT", async () => {
           multihash.digest,
           content,
           9, // This
+          DagCbor.code,
           0
         )
       ).to.be.revertedWith("IPFT: invalid tag version");
@@ -48,7 +49,14 @@ describe("IPFT", async () => {
 
       const multihash = await sha256.digest(content);
 
-      await ipft.mint(w0.address, multihash.digest, content, 8, 10);
+      await ipft.mint(
+        w0.address,
+        multihash.digest,
+        content,
+        8,
+        DagCbor.code,
+        10
+      );
 
       expect(await ipft.balanceOf(w0.address)).to.eq(1);
       expect(await ipft.ownerOf(multihash.digest)).to.eq(w0.address);
@@ -79,14 +87,21 @@ describe("IPFT", async () => {
       const multihash = await sha256.digest(content);
 
       await expect(
-        ipft.mint(w0.address, multihash.digest, content, 8, 10)
+        ipft.mint(w0.address, multihash.digest, content, 8, DagCbor.code, 10)
       ).to.be.revertedWith("IPFT: invalid minter nonce");
     });
   });
 
   describe("uri", () => {
     it("works", async () => {
-      expect(await ipft.tokenURI(0)).to.eq(
+      const content = DagCbor.encode({
+        metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
+        ipft: ipftTag(await getChainId(provider), ipft.address, w0.address, 0),
+      });
+
+      const multihash = await sha256.digest(content);
+
+      expect(await ipft.tokenURI(multihash.digest)).to.eq(
         "http://f01711220{id}.ipfs/metadata.json"
       );
     });

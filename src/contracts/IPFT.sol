@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/interfaces/IERC2981.sol";
  * @title Interplanetary File Token
  * @author Fancy Software <fancysoft.eth>
  *
- * An IPFT represents a digital copyright for a DAG-CBOR IPFS CID,
+ * An IPNFT represents a digital copyright for an IPFS CID,
  * where a token ID is the 32-byte SHA-2-256 digest part of it.
  *
  * To {mint} an IPFT with a specific identifier, one must prove
@@ -18,13 +18,16 @@ contract IPFT is ERC721, IERC2981 {
     /// Get an address minter nonce, used in {mint}.
     mapping(address => uint32) public minterNonce;
 
+    /// Get a token content codec (e.g. 0x71 for dag-cbor).
+    mapping(uint256 => uint32) public codec;
+
     /// Get a token royalty, which is calculated as `royalty / 255`.
     mapping(uint256 => uint8) public royalty;
 
     constructor() ERC721("IPFT", "IPFT") {}
 
     /**
-     * Claim an IPFT ownership by proving that the root DAG-CBOR file
+     * Claim an IPFT ownership by proving that `content`
      * contains a nonced 80-byte IPFT tag at `tagOffset`.
      *
      * First, the SHA-256 hash of the `content` is computed and compared to `id`.
@@ -38,16 +41,16 @@ contract IPFT is ERC721, IERC2981 {
      * [^1]: `0x65766d01` is the hex encoding of the ASCII string "evm\x01",
      * that is version 1 of the IPFT tag for the EVM.
      *
-     * Upon successfull checks, a brand-new IPFT is minted to `to`.
+     * Upon success, a brand-new IPFT is minted to `to`.
      *
-     * @notice The CBOR file shall contain a link to an ERC721 Metadata JSON file
-     * at the root key "metadata.json", so that it is accessible via "/metadata.json".
-     * See {tokenURI} for the metadata URI example.
+     * @notice The content shall have an ERC721 Metadata JSON file resolvable
+     * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
      *
      * @param minter    The address of the token minter (must be caller or approved).
      * @param id        The token id, also the SHA-2-256 hash of `content`.
-     * @param content   The root DAG-CBOR file containing the IPFT tag.
+     * @param content   The file containing the IPFT tag.
      * @param tagOffset The IPFT tag offset in bytes.
+     * @param codec_    The content codec (e.g. `0x71` for dag-cbor).
      * @param royalty_  The token royalty, calculated as `royalty / 255`.
      */
     function mint(
@@ -55,6 +58,7 @@ contract IPFT is ERC721, IERC2981 {
         uint256 id,
         bytes calldata content,
         uint32 tagOffset,
+        uint32 codec_,
         uint8 royalty_
     ) public {
         require(
@@ -101,6 +105,9 @@ contract IPFT is ERC721, IERC2981 {
         // Increment the minter nonce.
         minterNonce[minter] += 1;
 
+        // Set codec.
+        codec[id] = codec_;
+
         // Set royalty.
         royalty[id] = royalty_;
 
@@ -109,7 +116,7 @@ contract IPFT is ERC721, IERC2981 {
     }
 
     /**
-     * Batch version of {mint}. For a successive CBOR file,
+     * Batch version of {mint}. For a successive content,
      * the according {minterNonce} value increments.
      */
     function mintBatch(
@@ -117,10 +124,18 @@ contract IPFT is ERC721, IERC2981 {
         uint256[] calldata tokenIds,
         bytes[] calldata contents,
         uint32[] calldata tagOffsets,
+        uint32 codec_,
         uint8 royalty_
     ) external {
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            mint(minter, tokenIds[i], contents[i], tagOffsets[i], royalty_);
+            mint(
+                minter,
+                tokenIds[i],
+                contents[i],
+                tagOffsets[i],
+                codec_,
+                royalty_
+            );
         }
     }
 
@@ -161,22 +176,30 @@ contract IPFT is ERC721, IERC2981 {
     }
 
     /**
-     * Always return string `"http://f01711220{id}.ipfs/metadata.json"`.
+     * Return string `"http://f01[codec]1220{id}.ipfs/metadata.json"`,
+     * where `[codec]` is replaced automaticly with the actual token codec.
      *
      * ```
      * http:// f 01 71 12 20 {id} .ipfs /metadata.json
      *         │ │  │  │  │  └ Literal "{id}" string (to be hex-interoplated client-side)
      *         │ │  │  │  └ 32 bytes
      *         │ │  │  └ sha-2-256
-     *         │ │  └ dag-cbor
+     *         │ │  └ dag-cbor (for example)
      *         │ └ cidv1
      *         └ base16
      * ```
      */
     function tokenURI(
-        uint256
-    ) public pure override(ERC721) returns (string memory) {
-        return "http://f01711220{id}.ipfs/metadata.json";
+        uint256 tokenId
+    ) public view override(ERC721) returns (string memory) {
+        return
+            string(
+                abi.encodePacked(
+                    "http://f01",
+                    _toHexString(codec[tokenId]),
+                    "1220{id}.ipfs/metadata.json"
+                )
+            );
     }
 
     /**
@@ -222,5 +245,28 @@ contract IPFT is ERC721, IERC2981 {
         assembly {
             parsedAddress := mload(add(source, add(20, offset)))
         }
+    }
+
+    bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
+
+    function _toHexString(uint32 value) internal pure returns (string memory) {
+        if (value == 0) return "00";
+
+        uint32 temp = value;
+        uint8 length = 0;
+
+        while (temp != 0) {
+            length++;
+            temp >>= 8;
+        }
+
+        bytes memory buffer = new bytes(2 * length);
+
+        for (uint8 i = 2 * length; i > 0; i--) {
+            buffer[i - 1] = _HEX_SYMBOLS[value & 0xf];
+            value >>= 4;
+        }
+
+        return string(buffer);
     }
 }
