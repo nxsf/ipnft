@@ -5,27 +5,27 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
 /**
- * @title Interplanetary Non-Fungible Token: 721
+ * @title Interplanetary File Token
  * @author Fancy Software <fancysoft.eth>
  *
- * An IPNFT721 represents a digital copyright for a DAG-CBOR IPFS CID,
+ * An IPFT represents a digital copyright for a DAG-CBOR IPFS CID,
  * where a token ID is the 32-byte SHA-2-256 digest part of it.
  *
- * To {mint} an IPNFT721 with a specific identifier, one must prove
- * the possession of the content containing a valid IPNFT tag.
+ * To {mint} an IPFT with a specific identifier, one must prove
+ * the possession of the content containing a valid IPFT tag.
  */
-contract IPNFT721 is ERC721, IERC2981 {
+contract IPFT is ERC721, IERC2981 {
     /// Get an address minter nonce, used in {mint}.
     mapping(address => uint32) public minterNonce;
 
     /// Get a token royalty, which is calculated as `royalty / 255`.
     mapping(uint256 => uint8) public royalty;
 
-    constructor() ERC721("IPNFT721", "IPNFT") {}
+    constructor() ERC721("IPFT", "IPFT") {}
 
     /**
-     * Claim an IPNFT ownership by proving that the root DAG-CBOR file
-     * contains a nonced 80-byte IPNFT tag at `tagOffset`.
+     * Claim an IPFT ownership by proving that the root DAG-CBOR file
+     * contains a nonced 80-byte IPFT tag at `tagOffset`.
      *
      * First, the SHA-256 hash of the `content` is computed and compared to `id`.
      *
@@ -36,9 +36,9 @@ contract IPNFT721 is ERC721, IERC2981 {
      * `0x65766d01` [^1] | `block.chainid` | `address(this)`  | `minter`       | `minterNonce[minter]`
      *
      * [^1]: `0x65766d01` is the hex encoding of the ASCII string "evm\x01",
-     * that is version 1 of the IPNFT tag for the EVM.
+     * that is version 1 of the IPFT tag for the EVM.
      *
-     * Upon successfull checks, a brand-new IPNFT is minted to `to`.
+     * Upon successfull checks, a brand-new IPFT is minted to `to`.
      *
      * @notice The CBOR file shall contain a link to an ERC721 Metadata JSON file
      * at the root key "metadata.json", so that it is accessible via "/metadata.json".
@@ -46,8 +46,8 @@ contract IPNFT721 is ERC721, IERC2981 {
      *
      * @param minter    The address of the token minter (must be caller or approved).
      * @param id        The token id, also the SHA-2-256 hash of `content`.
-     * @param content   The root DAG-CBOR file containing the IPNFT tag.
-     * @param tagOffset The IPNFT tag offset in bytes.
+     * @param content   The root DAG-CBOR file containing the IPFT tag.
+     * @param tagOffset The IPFT tag offset in bytes.
      * @param royalty_  The token royalty, calculated as `royalty / 255`.
      */
     function mint(
@@ -59,49 +59,43 @@ contract IPNFT721 is ERC721, IERC2981 {
     ) public {
         require(
             msg.sender == minter || isApprovedForAll(minter, msg.sender),
-            "IPNFT721: not allowed"
+            "IPFT: not allowed"
         );
 
         // Check the content hash against the token ID.
-        require(
-            uint256(sha256(content)) == id,
-            "IPNFT721: content hash mismatch"
-        );
+        require(uint256(sha256(content)) == id, "IPFT: content hash mismatch");
 
         // Check the content length so that it may contain the tag.
-        require(
-            content.length >= tagOffset + 80,
-            "IPNFT721: content too short"
-        );
+        require(content.length >= tagOffset + 80, "IPFT: content too short");
 
         // Check the tag version value.
         require(
             _bytesToUint32(content, tagOffset) == 0x65766D01,
-            "IPNFT721: invalid tag version"
+            "IPFT: invalid tag version"
         );
 
         // Check the tag blockchain id value.
         require(
             _bytesToUint256(content, tagOffset + 4) == block.chainid,
-            "IPNFT721: invalid blockchain id"
+            "IPFT: invalid blockchain id"
         );
 
         // Check the tag contract address.
         require(
             _bytesToAddress(content, tagOffset + 36) == address(this),
-            "IPNFT721: invalid contract address"
+            "IPFT: invalid contract address"
         );
 
         // Check the tag minter address.
         require(
             _bytesToAddress(content, tagOffset + 56) == minter,
-            "IPNFT721: invalid minter address"
+            "IPFT: invalid minter address"
         );
 
         // Check the tag minter nonce.
         require(
             _bytesToUint32(content, tagOffset + 76) == minterNonce[minter],
-            "IPNFT721: invalid minter nonce"
+            "IPFT: invalid minter nonce"
         );
 
         // Increment the minter nonce.
@@ -110,7 +104,7 @@ contract IPNFT721 is ERC721, IERC2981 {
         // Set royalty.
         royalty[id] = royalty_;
 
-        // Mint the IPNFT.
+        // Mint the IPFT.
         _mint(minter, id);
     }
 
@@ -134,11 +128,10 @@ contract IPNFT721 is ERC721, IERC2981 {
      * Check if `operator` is either the owner of the `tokenId`,
      * {getApproved} or {isApprovedForAll} on behalf of the owner.
      */
-    function isAuthorized(address operator, uint256 tokenId)
-        public
-        view
-        returns (bool)
-    {
+    function isAuthorized(
+        address operator,
+        uint256 tokenId
+    ) public view returns (bool) {
         return
             operator == ownerOf(tokenId) ||
             operator == getApproved(tokenId) ||
@@ -148,11 +141,10 @@ contract IPNFT721 is ERC721, IERC2981 {
     /**
      * Batch version of {isAuthorized}, checking authorization for *all* `tokenIds`.
      */
-    function isAuthorizedBatch(address operator, uint256[] memory tokenIds)
-        public
-        view
-        returns (bool)
-    {
+    function isAuthorizedBatch(
+        address operator,
+        uint256[] memory tokenIds
+    ) public view returns (bool) {
         for (uint256 i = 0; i < tokenIds.length; i++) {
             if (!(isAuthorized(operator, tokenIds[i]))) return false;
         }
@@ -160,12 +152,9 @@ contract IPNFT721 is ERC721, IERC2981 {
         return true;
     }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, IERC165)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC721, IERC165) returns (bool) {
         return
             interfaceId == type(IERC2981).interfaceId ||
             super.supportsInterface(interfaceId);
@@ -184,19 +173,19 @@ contract IPNFT721 is ERC721, IERC2981 {
      *         └ base16
      * ```
      */
-    function tokenURI(uint256)
-        public
-        pure
-        override(ERC721)
-        returns (string memory)
-    {
+    function tokenURI(
+        uint256
+    ) public pure override(ERC721) returns (string memory) {
         return "http://f01711220{id}.ipfs/metadata.json";
     }
 
     /**
      * See {IERC2981-royaltyInfo}.
      */
-    function royaltyInfo(uint256 tokenId, uint256 salePrice)
+    function royaltyInfo(
+        uint256 tokenId,
+        uint256 salePrice
+    )
         external
         view
         override(IERC2981)
@@ -208,31 +197,28 @@ contract IPNFT721 is ERC721, IERC2981 {
         );
     }
 
-    function _bytesToUint32(bytes memory source, uint32 offset)
-        internal
-        pure
-        returns (uint32 parsedUint)
-    {
+    function _bytesToUint32(
+        bytes memory source,
+        uint32 offset
+    ) internal pure returns (uint32 parsedUint) {
         assembly {
             parsedUint := mload(add(source, add(4, offset)))
         }
     }
 
-    function _bytesToUint256(bytes memory source, uint32 offset)
-        internal
-        pure
-        returns (uint256 parsedUint)
-    {
+    function _bytesToUint256(
+        bytes memory source,
+        uint32 offset
+    ) internal pure returns (uint256 parsedUint) {
         assembly {
             parsedUint := mload(add(source, add(32, offset)))
         }
     }
 
-    function _bytesToAddress(bytes memory source, uint32 offset)
-        internal
-        pure
-        returns (address parsedAddress)
-    {
+    function _bytesToAddress(
+        bytes memory source,
+        uint32 offset
+    ) internal pure returns (address parsedAddress) {
         assembly {
             parsedAddress := mload(add(source, add(20, offset)))
         }

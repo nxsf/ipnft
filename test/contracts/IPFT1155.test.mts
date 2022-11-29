@@ -1,71 +1,66 @@
 import { expect, use } from "chai";
 import { deployContract, MockProvider, solidity } from "ethereum-waffle";
-import IpnftABI from "../../waffle/IPNFT.json";
-import { Ipnft } from "../../waffle/types/Ipnft";
-import Ipnft1155ABI from "../../waffle/IPNFT1155.json";
-import { Ipnft1155 } from "../../waffle/types/Ipnft1155";
+import IpftABI from "../../waffle/IPFT721.json";
+import { Ipft721 } from "../../waffle/types/Ipft721";
+import Ipft1155ABI from "../../waffle/IPFT1155.json";
+import { Ipft1155 } from "../../waffle/types/Ipft1155";
 import * as DagCbor from "@ipld/dag-cbor";
 import { ByteView, CID, digest } from "multiformats";
 import { sha256 } from "multiformats/hashes/sha2";
-import { ipnftTag, getChainId } from "./util.mjs";
+import { ipftTag, getChainId } from "./util.mjs";
 import { addMonths } from "date-fns";
 import { BigNumber } from "ethers";
 
 use(solidity);
 
-describe("IPNFT1155", async () => {
+describe("IPFT(1155)", async () => {
   const provider = new MockProvider();
   const [w0, w1, w2] = provider.getWallets();
 
-  let ipnft721: Ipnft;
-  let ipnft1155: Ipnft1155;
+  let ipft721: Ipft721;
+  let ipft1155: Ipft1155;
 
   let content: ByteView<any>, multihash: digest.Digest<18, number>;
   let expiresAt = Math.round(addMonths(new Date(), 1).valueOf() / 1000);
 
   before(async () => {
-    ipnft721 = (await deployContract(w0, IpnftABI)) as Ipnft;
+    ipft721 = (await deployContract(w0, IpftABI)) as Ipft721;
 
-    ipnft1155 = (await deployContract(w0, Ipnft1155ABI, [
-      ipnft721.address,
-    ])) as Ipnft1155;
+    ipft1155 = (await deployContract(w0, Ipft1155ABI, [
+      ipft721.address,
+    ])) as Ipft1155;
 
     content = DagCbor.encode({
       metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-      ipnft: ipnftTag(
-        await getChainId(provider),
-        ipnft721.address,
-        w0.address,
-        0
-      ),
+      ipft: ipftTag(await getChainId(provider), ipft721.address, w0.address, 0),
     });
 
     multihash = await sha256.digest(content);
   });
 
   describe("minting", () => {
-    describe("when IPNFT doesn't exist", () => {
+    describe("when IPFT(721) doesn't exist", () => {
       it("fails", async () => {
         await expect(
-          ipnft1155.mint(w0.address, multihash.digest, 10, false, expiresAt, [])
+          ipft1155.mint(w0.address, multihash.digest, 10, false, expiresAt, [])
         ).to.be.revertedWith("ERC721: invalid token ID");
       });
 
       after(async () => {
-        await ipnft721.mint(w0.address, multihash.digest, content, 9, 10);
+        await ipft721.mint(w0.address, multihash.digest, content, 8, 10);
       });
     });
 
-    describe("when IPNFT is owned", () => {
+    describe("when IPFT(721) is owned", () => {
       it("works", async () => {
-        const w0BalanceBefore = await ipnft1155.balanceOf(
+        const w0BalanceBefore = await ipft1155.balanceOf(
           w0.address,
           multihash.digest
         );
 
-        const totalSupplyBefore = await ipnft1155.totalSupply(multihash.digest);
+        const totalSupplyBefore = await ipft1155.totalSupply(multihash.digest);
 
-        await ipnft1155.mint(
+        await ipft1155.mint(
           w0.address,
           multihash.digest,
           10,
@@ -74,50 +69,50 @@ describe("IPNFT1155", async () => {
           []
         );
 
-        expect(await ipnft1155.balanceOf(w0.address, multihash.digest)).to.eq(
+        expect(await ipft1155.balanceOf(w0.address, multihash.digest)).to.eq(
           w0BalanceBefore.add(10)
         );
 
-        expect(await ipnft1155.totalSupply(multihash.digest)).to.equal(
+        expect(await ipft1155.totalSupply(multihash.digest)).to.equal(
           totalSupplyBefore.add(10)
         );
       });
     });
 
-    describe("when IPNFT is not possesed", () => {
+    describe("when IPFT(721) is not possesed", () => {
       it("fails", async () => {
         await expect(
-          ipnft1155
+          ipft1155
             .connect(w1)
             .mint(w1.address, multihash.digest, 10, false, expiresAt, [])
-        ).to.be.revertedWith("IPNFT1155: IPNFT721-unauthorized");
+        ).to.be.revertedWith("IPFT(1155): IPFT(721)-unauthorized");
       });
     });
 
-    describe("when IPNFT is authorized", () => {
+    describe("when IPFT(721) is authorized", () => {
       before(async () => {
-        await ipnft721.setApprovalForAll(w1.address, true);
+        await ipft721.setApprovalForAll(w1.address, true);
       });
 
       it("works", async () => {
-        const w1BalanceBefore = await ipnft1155.balanceOf(
+        const w1BalanceBefore = await ipft1155.balanceOf(
           w1.address,
           multihash.digest
         );
 
-        await ipnft1155
+        await ipft1155
           .connect(w1)
           .mint(w1.address, multihash.digest, 10, false, expiresAt, []);
 
         expect(
-          await ipnft1155.connect(w1).balanceOf(w1.address, multihash.digest)
+          await ipft1155.connect(w1).balanceOf(w1.address, multihash.digest)
         ).to.equal(w1BalanceBefore.add(10));
       });
     });
 
     describe("when finalized", () => {
       before(async () => {
-        await ipnft1155.mint(
+        await ipft1155.mint(
           w0.address,
           multihash.digest,
           0,
@@ -128,41 +123,41 @@ describe("IPNFT1155", async () => {
       });
 
       it("fails", async () => {
-        expect(await ipnft1155.isFinalized(multihash.digest)).to.be.true;
+        expect(await ipft1155.isFinalized(multihash.digest)).to.be.true;
 
         await expect(
-          ipnft1155.mint(w0.address, multihash.digest, 10, false, expiresAt, [])
-        ).to.be.revertedWith("IPNFT1155: finalized");
+          ipft1155.mint(w0.address, multihash.digest, 10, false, expiresAt, [])
+        ).to.be.revertedWith("IPFT(1155): finalized");
       });
     });
   });
 
   describe("redeeming", () => {
     it("works", async () => {
-      const w0BalanceBefore = await ipnft1155.balanceOf(
+      const w0BalanceBefore = await ipft1155.balanceOf(
         w0.address,
         multihash.digest
       );
 
       await expect(
-        ipnft1155.safeTransferFrom(
+        ipft1155.safeTransferFrom(
           w0.address,
-          ipnft1155.address,
+          ipft1155.address,
           multihash.digest,
           3,
           []
         )
       )
-        .to.emit(ipnft1155, "TransferSingle")
+        .to.emit(ipft1155, "TransferSingle")
         .withArgs(
           w0.address,
           w0.address,
-          ipnft1155.address,
+          ipft1155.address,
           BigNumber.from(multihash.digest),
           3
         );
 
-      expect(await ipnft1155.balanceOf(w0.address, multihash.digest)).to.eq(
+      expect(await ipft1155.balanceOf(w0.address, multihash.digest)).to.eq(
         w0BalanceBefore.sub(3)
       );
     });
@@ -178,14 +173,14 @@ describe("IPNFT1155", async () => {
 
       it("fails", async () => {
         await expect(
-          ipnft1155.safeTransferFrom(
+          ipft1155.safeTransferFrom(
             w0.address,
-            ipnft1155.address,
+            ipft1155.address,
             multihash.digest,
             3,
             []
           )
-        ).to.be.revertedWith("IPNFT1155: expired");
+        ).to.be.revertedWith("IPFT(1155): expired");
       });
     });
   });

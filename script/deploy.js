@@ -9,8 +9,8 @@ async function deploy(contractName, ...args) {
 }
 
 async function main() {
-  const ipnft721 = await deploy("IPNFT721");
-  await deploy("IPNFT1155", ipnft721.address);
+  const ipft721 = await deploy("IPFT");
+  await deploy("IPFT1155", ipft721.address);
 }
 
 main()
