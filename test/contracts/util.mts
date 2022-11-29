@@ -1,6 +1,6 @@
 import { ethers } from "ethers";
 
-export function ipnftTag(
+export function ipftTag(
   chainId: number,
   contractAddress: string,
   minterAddress: string,

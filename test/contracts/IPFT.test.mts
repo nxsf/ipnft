@@ -1,70 +1,60 @@
 import { expect, use } from "chai";
 import { ethers } from "ethers";
 import { deployContract, MockProvider, solidity } from "ethereum-waffle";
-import ABI from "../../waffle/IPNFT721.json";
-import { Ipnft721 } from "../../waffle/types/Ipnft721";
+import ABI from "../../waffle/IPFT.json";
+import { Ipft } from "../../waffle/types/Ipft";
 import * as DagCbor from "@ipld/dag-cbor";
 import { CID } from "multiformats";
 import { sha256 } from "multiformats/hashes/sha2";
-import { ipnftTag, getChainId } from "./util.mjs";
+import { ipftTag, getChainId } from "./util.mjs";
 
 use(solidity);
 
-describe("IPNFT", async () => {
+describe("IPFT", async () => {
   const provider = new MockProvider();
   const [w0, w1, w2] = provider.getWallets();
 
-  let ipnft721: Ipnft721;
+  let ipft: Ipft;
 
   before(async () => {
-    ipnft721 = (await deployContract(w0, ABI)) as Ipnft721;
+    ipft = (await deployContract(w0, ABI)) as Ipft;
   });
 
   describe("minting", () => {
     it("fails on invalid tag offset", async () => {
       const content = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipnft: ipnftTag(
-          await getChainId(provider),
-          ipnft721.address,
-          w0.address,
-          0
-        ),
+        ipft: ipftTag(await getChainId(provider), ipft.address, w0.address, 0),
       });
 
       const multihash = await sha256.digest(content);
 
       await expect(
-        ipnft721.mint(
+        ipft.mint(
           w0.address,
           multihash.digest,
           content,
-          10, // This
+          9, // This
           0
         )
-      ).to.be.revertedWith("IPNFT721: invalid tag version");
+      ).to.be.revertedWith("IPFT: invalid tag version");
     });
 
     it("works", async () => {
       const content = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipnft: ipnftTag(
-          await getChainId(provider),
-          ipnft721.address,
-          w0.address,
-          0
-        ),
+        ipft: ipftTag(await getChainId(provider), ipft.address, w0.address, 0),
       });
 
       const multihash = await sha256.digest(content);
 
-      await ipnft721.mint(w0.address, multihash.digest, content, 9, 10);
+      await ipft.mint(w0.address, multihash.digest, content, 8, 10);
 
-      expect(await ipnft721.balanceOf(w0.address)).to.eq(1);
-      expect(await ipnft721.ownerOf(multihash.digest)).to.eq(w0.address);
-      expect(await ipnft721.minterNonce(w0.address)).to.eq(1);
+      expect(await ipft.balanceOf(w0.address)).to.eq(1);
+      expect(await ipft.ownerOf(multihash.digest)).to.eq(w0.address);
+      expect(await ipft.minterNonce(w0.address)).to.eq(1);
 
-      const royaltyInfo = await ipnft721.royaltyInfo(
+      const royaltyInfo = await ipft.royaltyInfo(
         multihash.digest,
         ethers.utils.parseEther("1")
       );
@@ -78,9 +68,9 @@ describe("IPNFT", async () => {
     it("disallows minting with the sames nonce", async () => {
       const content = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipnft: ipnftTag(
+        ipft: ipftTag(
           await getChainId(provider),
-          ipnft721.address,
+          ipft.address,
           w0.address,
           0 // This
         ),
@@ -89,14 +79,14 @@ describe("IPNFT", async () => {
       const multihash = await sha256.digest(content);
 
       await expect(
-        ipnft721.mint(w0.address, multihash.digest, content, 9, 10)
-      ).to.be.revertedWith("IPNFT721: invalid minter nonce");
+        ipft.mint(w0.address, multihash.digest, content, 8, 10)
+      ).to.be.revertedWith("IPFT: invalid minter nonce");
     });
   });
 
   describe("uri", () => {
     it("works", async () => {
-      expect(await ipnft721.tokenURI(0)).to.eq(
+      expect(await ipft.tokenURI(0)).to.eq(
         "http://f01711220{id}.ipfs/metadata.json"
       );
     });

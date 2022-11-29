@@ -7,23 +7,23 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/interfaces/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
-import "./IPNFT721.sol";
+import "./IPFT.sol";
 
 /**
- * @title Interplanetary Non-Fungible Token: 1155
+ * @title Interplanetary File Token (1155)
  * @author Fancy Software <fancysoft.eth>
  *
- * IPNFT1155 is an ERC-1155 {IPNFT721} derivative that can be (optionally)
+ * IPFT(1155) is an ERC-1155 {IPFT} derivative that can be (optionally)
  * redeemed by sending it back to this contract.
  */
-contract IPNFT1155 is
+contract IPFT1155 is
     ERC1155,
     ERC1155Burnable,
     ERC1155Supply,
     IERC1155Receiver,
     IERC2981
 {
-    IPNFT721 public ipnft721;
+    IPFT public ipft;
 
     /** Once a token is finalized, it cannot be minted anymore. */
     mapping(uint256 => bool) public isFinalized;
@@ -31,12 +31,12 @@ contract IPNFT1155 is
     /** If not zero, the token is considered {isRedeemable}. */
     mapping(uint256 => uint64) public expiredAt;
 
-    constructor(IPNFT721 _ipnft) ERC1155("") {
-        ipnft721 = _ipnft;
+    constructor(IPFT _ipft) ERC1155("") {
+        ipft = _ipft;
     }
 
     /**
-     * Mint an IPNFT1155 token.
+     * Mint an IPFT(1155) token.
      *
      * @param finalize   To irreversibly disable further minting for this token.
      * @param expiredAt_ The timestamp the token ceases to be redeemable at.
@@ -52,13 +52,13 @@ contract IPNFT1155 is
         bytes calldata data
     ) public {
         require(
-            ipnft721.isAuthorized(msg.sender, id),
-            "IPNFT1155: IPNFT721-unauthorized"
+            ipft.isAuthorized(msg.sender, id),
+            "IPFT(1155): IPFT(721)-unauthorized"
         );
 
-        require(to != address(this), "IPNFT1155: mint to this");
+        require(to != address(this), "IPFT(1155): mint to this");
 
-        require(!isFinalized[id], "IPNFT1155: finalized");
+        require(!isFinalized[id], "IPFT(1155): finalized");
         isFinalized[id] = finalize;
 
         _updateExpiredAt(id, expiredAt_);
@@ -77,14 +77,14 @@ contract IPNFT1155 is
         bytes calldata data
     ) public {
         require(
-            ipnft721.isAuthorizedBatch(msg.sender, ids),
-            "IPNFT1155: IPNFT721-unauthorized"
+            ipft.isAuthorizedBatch(msg.sender, ids),
+            "IPFT(1155): IPFT(721)-unauthorized"
         );
 
-        require(to != address(this), "IPNFT1155: mint to this");
+        require(to != address(this), "IPFT(1155): mint to this");
 
         for (uint256 i = 0; i < ids.length; i++) {
-            require(!isFinalized[ids[i]], "IPNFT1155: finalized");
+            require(!isFinalized[ids[i]], "IPFT(1155): finalized");
             isFinalized[ids[i]] = finalize;
 
             _updateExpiredAt(ids[i], expiredAt_);
@@ -98,7 +98,7 @@ contract IPNFT1155 is
      * Reverts if the token does not {exists}.
      */
     function isRedeemable(uint256 tokenId) public view returns (bool) {
-        require(exists(tokenId), "IPNFT1155: does not exist");
+        require(exists(tokenId), "IPFT(1155): does not exist");
         return expiredAt[tokenId] != 0;
     }
 
@@ -107,7 +107,7 @@ contract IPNFT1155 is
      * Reverts if the token not {isRedeemable}.
      */
     function hasExpired(uint256 tokenId) public view returns (bool) {
-        require(isRedeemable(tokenId), "IPNFT1155: not redeemable");
+        require(isRedeemable(tokenId), "IPFT(1155): not redeemable");
         return block.timestamp > expiredAt[tokenId];
     }
 
@@ -125,7 +125,7 @@ contract IPNFT1155 is
     ) external view override(IERC1155Receiver) returns (bytes4) {
         require(
             msg.sender == address(this),
-            "IPNFT1155: not from this contract"
+            "IPFT(1155): not from this contract"
         );
 
         _ensureRedeemable(id, value);
@@ -146,7 +146,7 @@ contract IPNFT1155 is
     ) external view override(IERC1155Receiver) returns (bytes4) {
         require(
             msg.sender == address(this),
-            "IPNFT1155: not from this contract"
+            "IPFT(1155): not from this contract"
         );
 
         for (uint256 i = 0; i < ids.length; i++) {
@@ -156,12 +156,9 @@ contract IPNFT1155 is
         return IERC1155Receiver.onERC1155BatchReceived.selector;
     }
 
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC1155, IERC165)
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC1155, IERC165) returns (bool) {
         return
             interfaceId == type(IERC1155Receiver).interfaceId ||
             interfaceId == type(IERC2981).interfaceId ||
@@ -169,45 +166,45 @@ contract IPNFT1155 is
     }
 
     /**
-     * Return {IPNFT721-royaltyInfo}.
+     * Return {IPFT-royaltyInfo}.
      */
-    function royaltyInfo(uint256 tokenId, uint256 salePrice)
+    function royaltyInfo(
+        uint256 tokenId,
+        uint256 salePrice
+    )
         external
         view
         override(IERC2981)
         returns (address receiver, uint256 royaltyAmount)
     {
-        return ipnft721.royaltyInfo(tokenId, salePrice);
+        return ipft.royaltyInfo(tokenId, salePrice);
     }
 
     /**
-     * Return {IPNFT721-tokenURI}.
+     * Return {IPFT-tokenURI}.
      */
-    function uri(uint256 id)
-        public
-        view
-        override(ERC1155)
-        returns (string memory)
-    {
-        return ipnft721.tokenURI(id);
+    function uri(
+        uint256 id
+    ) public view override(ERC1155) returns (string memory) {
+        return ipft.tokenURI(id);
     }
 
     // TODO: Write tests.
     function _updateExpiredAt(uint256 id, uint64 expiredAt_) internal {
         if (exists(id)) {
             if (expiredAt[id] == 0) {
-                require(expiredAt_ == 0, "IPNFT1155: not redeemable");
+                require(expiredAt_ == 0, "IPFT(1155): not redeemable");
             } else {
                 require(
                     expiredAt_ >= expiredAt[id],
-                    "IPNFT1155: expiredAt is less than current"
+                    "IPFT(1155): expiredAt is less than current"
                 );
-                require(expiredAt_ > block.timestamp, "IPNFT1155: expired");
+                require(expiredAt_ > block.timestamp, "IPFT(1155): expired");
             }
         } else {
             require(
                 expiredAt_ == 0 || expiredAt_ > block.timestamp,
-                "IPNFT1155: expired"
+                "IPFT(1155): expired"
             );
         }
 
@@ -226,8 +223,8 @@ contract IPNFT1155 is
     }
 
     function _ensureRedeemable(uint256 id, uint256 value) internal view {
-        require(isRedeemable(id), "IPNFT1155: not minted");
-        require(!hasExpired(id), "IPNFT1155: expired");
-        require(value > 0, "IPNFT1155: redeemable value is zero");
+        require(isRedeemable(id), "IPFT(1155): not minted");
+        require(!hasExpired(id), "IPFT(1155): expired");
+        require(value > 0, "IPFT(1155): redeemable value is zero");
     }
 }
