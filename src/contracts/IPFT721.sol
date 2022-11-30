@@ -97,34 +97,6 @@ contract IPFT721 is ERC721, IERC2981 {
         }
     }
 
-    /**
-     * Check if `operator` is either the owner of the `tokenId`,
-     * {getApproved} or {isApprovedForAll} on behalf of the owner.
-     */
-    function isAuthorized(
-        address operator,
-        uint256 tokenId
-    ) public view returns (bool) {
-        return
-            operator == ownerOf(tokenId) ||
-            operator == getApproved(tokenId) ||
-            isApprovedForAll(ownerOf(tokenId), operator);
-    }
-
-    /**
-     * Batch version of {isAuthorized}, checking authorization for *all* `tokenIds`.
-     */
-    function isAuthorizedBatch(
-        address operator,
-        uint256[] memory tokenIds
-    ) public view returns (bool) {
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            if (!(isAuthorized(operator, tokenIds[i]))) return false;
-        }
-
-        return true;
-    }
-
     function supportsInterface(
         bytes4 interfaceId
     ) public view override(ERC721, IERC165) returns (bool) {

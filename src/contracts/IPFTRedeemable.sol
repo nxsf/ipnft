@@ -7,37 +7,71 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/interfaces/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
-import "./IPFT721.sol";
+import "./IPFT.sol";
 
 /**
- * @title Interplanetary File Token (1155): Redeemable
+ * @title Interplanetary File Token (Redeemable)
  * @author Fancy Software <fancysoft.eth>
  *
- * IPFT(1155)Redeemable is an ERC-1155-compliant IPFT derivative
- * relying on IPFT(721) to determine minting rights and auxiliary information.
- * An IPFT(1155)Redeemable can be redeemed by sending back to this contract.
+ * IPFT(Redeemable) is an ERC-1155-compliant IPFT
+ * which can be redeemed by sending back to this contract.
  */
-contract IPFT1155Redeemable is
+contract IPFTRedeemable is
     ERC1155,
     ERC1155Burnable,
     ERC1155Supply,
     IERC1155Receiver,
     IERC2981
 {
-    IPFT721 public ipft721;
+    /// Get a token owner, if any.
+    mapping(uint256 => address) public owner;
 
-    /** Once a token is finalized, it cannot be minted anymore. */
+    /// Get an owner nonce, used in {mint}.
+    mapping(address => uint32) public nonce;
+
+    /// Get a token content codec (e.g. 0x71 for dag-cbor).
+    mapping(uint256 => uint32) public codec;
+
+    /// Get a token royalty, which is calculated as `royalty / 255`.
+    mapping(uint256 => uint8) public royalty;
+
+    /// Once a token is finalized, it cannot be minted anymore.
     mapping(uint256 => bool) public isFinalized;
 
-    /** If not zero, the token is considered {isRedeemable}. */
+    /// Get a redeemable token expiration timestamp.
     mapping(uint256 => uint64) public expiredAt;
 
-    constructor(IPFT721 _ipft721) ERC1155("") {
-        ipft721 = _ipft721;
+    constructor() ERC1155("") {}
+
+    /**
+     * Claim an IPFT ownership by proving that `content`
+     * contains a valid IPFT tag at `offset`.
+     * See {IPFT.prove} for more details.
+     * Once claimed, the token may be {mint}ed.
+     */
+    function claim(
+        uint256 id,
+        bytes calldata content,
+        uint32 offset,
+        uint32 codec_,
+        uint8 royalty_
+    ) public {
+        require(owner[id] == address(0), "IPFT(Redeemable): already claimed");
+        bytes32 hash = IPFT.prove(
+            content,
+            offset,
+            address(this),
+            msg.sender,
+            nonce[msg.sender]++
+        );
+        require(uint256(hash) == id, "IPFT(Redeemable): hash mismatch");
+        owner[id] = msg.sender;
+        codec[id] = codec_;
+        royalty[id] = royalty_;
     }
 
     /**
-     * Mint an IPFT(1155)Redeemable token.
+     * Mint a previously {claim}ed IPFT(Redeemable) token.
      *
      * @param finalize   To irreversibly disable further minting for this token.
      * @param expiredAt_ The timestamp the token ceases to be redeemable at.
@@ -54,15 +88,12 @@ contract IPFT1155Redeemable is
         bytes calldata data
     ) public {
         require(
-            ipft721.isAuthorized(msg.sender, id),
-            "IPFT(1155)Redeemable: IPFT(721)-unauthorized"
+            owner[id] == msg.sender || isApprovedForAll(owner[id], msg.sender),
+            "IPFT(Redeemable): unauthorized"
         );
-
-        require(to != address(this), "IPFT(1155)Redeemable: mint to this");
-
-        require(!isFinalized[id], "IPFT(1155)Redeemable: finalized");
+        require(to != address(this), "IPFT(Redeemable): mint to this");
+        require(!isFinalized[id], "IPFT(Redeemable): finalized");
         isFinalized[id] = finalize;
-
         _updateExpiredAt(id, expiredAt_);
         _mint(to, id, amount, data);
     }
@@ -78,21 +109,49 @@ contract IPFT1155Redeemable is
         uint64 expiredAt_,
         bytes calldata data
     ) public {
-        require(
-            ipft721.isAuthorizedBatch(msg.sender, ids),
-            "IPFT(1155)Redeemable: IPFT(721)-unauthorized"
-        );
-
-        require(to != address(this), "IPFT(1155)Redeemable: mint to this");
-
+        require(to != address(this), "IPFT(Redeemable): mint to this");
         for (uint256 i = 0; i < ids.length; i++) {
-            require(!isFinalized[ids[i]], "IPFT(1155)Redeemable: finalized");
+            require(
+                owner[ids[i]] == msg.sender ||
+                    isApprovedForAll(owner[ids[i]], msg.sender),
+                "IPFT(Redeemable): unauthorized"
+            );
+            require(!isFinalized[ids[i]], "IPFT(Redeemable): finalized");
             isFinalized[ids[i]] = finalize;
-
             _updateExpiredAt(ids[i], expiredAt_);
         }
-
         _mintBatch(to, ids, amounts, data);
+    }
+
+    /// A struct to overcome the Solidity stack size limits.
+    struct ClaimMintArgs {
+        uint256 id;
+        uint32 offset;
+        uint32 codec_;
+        uint8 royalty_;
+        address to;
+        uint256 amount;
+        bool finalize;
+        uint64 expiredAt_;
+    }
+
+    /**
+     * {claim}, then {mint} in one transaction.
+     */
+    function claimMint(
+        ClaimMintArgs calldata args,
+        bytes calldata content,
+        bytes calldata data
+    ) public {
+        claim(args.id, content, args.offset, args.codec_, args.royalty_);
+        mint(
+            args.to,
+            args.id,
+            args.amount,
+            args.finalize,
+            args.expiredAt_,
+            data
+        );
     }
 
     /**
@@ -116,7 +175,7 @@ contract IPFT1155Redeemable is
     ) external view override(IERC1155Receiver) returns (bytes4) {
         require(
             msg.sender == address(this),
-            "IPFT(1155)Redeemable: not from this contract"
+            "IPFT(Redeemable): not from this contract"
         );
 
         _ensureRedeemable(id, value);
@@ -137,7 +196,7 @@ contract IPFT1155Redeemable is
     ) external view override(IERC1155Receiver) returns (bytes4) {
         require(
             msg.sender == address(this),
-            "IPFT(1155)Redeemable: not from this contract"
+            "IPFT(Redeemable): not from this contract"
         );
 
         for (uint256 i = 0; i < ids.length; i++) {
@@ -157,7 +216,7 @@ contract IPFT1155Redeemable is
     }
 
     /**
-     * Return {IPFT-royaltyInfo}.
+     * See {IERC2981-royaltyInfo}.
      */
     function royaltyInfo(
         uint256 tokenId,
@@ -168,16 +227,19 @@ contract IPFT1155Redeemable is
         override(IERC2981)
         returns (address receiver, uint256 royaltyAmount)
     {
-        return ipft721.royaltyInfo(tokenId, salePrice);
+        return (
+            owner[tokenId],
+            (salePrice * royalty[tokenId]) / type(uint8).max
+        );
     }
 
     /**
-     * Return {IPFT-tokenURI}.
+     * Return {IPFT.uri} + "/metadata.json".
      */
     function uri(
         uint256 id
     ) public view override(ERC1155) returns (string memory) {
-        return ipft721.tokenURI(id);
+        return string.concat(IPFT.uri(codec[id]), "/metadata.json");
     }
 
     // TODO: Write tests.
@@ -185,11 +247,11 @@ contract IPFT1155Redeemable is
         if (exists(id)) {
             require(
                 expiredAt_ >= expiredAt[id],
-                "IPFT(1155)Redeemable: expiredAt is less than current"
+                "IPFT(Redeemable): expiredAt is less than current"
             );
         }
 
-        require(expiredAt_ > block.timestamp, "IPFT(1155)Redeemable: expired");
+        require(expiredAt_ > block.timestamp, "IPFT(Redeemable): expired");
 
         expiredAt[id] = expiredAt_;
     }
@@ -206,7 +268,7 @@ contract IPFT1155Redeemable is
     }
 
     function _ensureRedeemable(uint256 id, uint256 value) internal view {
-        require(value > 0, "IPFT(1155)Redeemable: redeemable value is zero");
-        require(!hasExpired(id), "IPFT(1155)Redeemable: expired");
+        require(value > 0, "IPFT(Redeemable): redeemable value is zero");
+        require(!hasExpired(id), "IPFT(Redeemable): expired");
     }
 }
