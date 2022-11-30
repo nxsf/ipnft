@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "./ToHexString.sol";
+
 library IPFT {
+    using ToHexString for uint32;
+
     /**
      * Prove an IPFT ownership by proving that `content`
      * contains a nonced 80-byte IPFT tag at `offset`.
@@ -60,10 +64,35 @@ library IPFT {
         return keccak256(content);
     }
 
+    /**
+     * Return string `"http://f01[codec]1220{id}.ipfs"`,
+     * where `[codec]` is replaced automaticly with the actual token codec.
+     *
+     * ```
+     * http:// f 01 71 1b 20 {id} .ipfs
+     *         │ │  │  │  │  └ Literal "{id}" string (to be hex-interoplated client-side)
+     *         │ │  │  │  └ 32 bytes
+     *         │ │  │  └ keccak256
+     *         │ │  └ dag-cbor (for example)
+     *         │ └ cidv1
+     *         └ base16
+     * ```
+     */
+    function uri(uint32 contentCodec) internal pure returns (string memory) {
+        return
+            string(
+                abi.encodePacked(
+                    "http://f01",
+                    contentCodec.toHexString(),
+                    "1b20{id}.ipfs"
+                )
+            );
+    }
+
     function _bytesToUint32(
         bytes memory source,
         uint32 offset
-    ) internal pure returns (uint32 parsedUint) {
+    ) private pure returns (uint32 parsedUint) {
         assembly {
             parsedUint := mload(add(source, add(4, offset)))
         }
@@ -72,7 +101,7 @@ library IPFT {
     function _bytesToUint256(
         bytes memory source,
         uint32 offset
-    ) internal pure returns (uint256 parsedUint) {
+    ) private pure returns (uint256 parsedUint) {
         assembly {
             parsedUint := mload(add(source, add(32, offset)))
         }
@@ -81,7 +110,7 @@ library IPFT {
     function _bytesToAddress(
         bytes memory source,
         uint32 offset
-    ) internal pure returns (address parsedAddress) {
+    ) private pure returns (address parsedAddress) {
         assembly {
             parsedAddress := mload(add(source, add(20, offset)))
         }

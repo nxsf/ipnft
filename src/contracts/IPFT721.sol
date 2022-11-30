@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
 import "./IPFT.sol";
-import "./ToHexString.sol";
 
 /**
  * @title Interplanetary File Token (721)
@@ -18,8 +17,6 @@ import "./ToHexString.sol";
  * the possession of the content containing a valid IPFT tag.
  */
 contract IPFT721 is ERC721, IERC2981 {
-    using ToHexString for uint32;
-
     /// Get a minter nonce, used in {mint}.
     mapping(address => uint32) public nonce;
 
@@ -137,30 +134,12 @@ contract IPFT721 is ERC721, IERC2981 {
     }
 
     /**
-     * Return string `"http://f01[codec]1220{id}.ipfs/metadata.json"`,
-     * where `[codec]` is replaced automaticly with the actual token codec.
-     *
-     * ```
-     * http:// f 01 71 1b 20 {id} .ipfs /metadata.json
-     *         │ │  │  │  │  └ Literal "{id}" string (to be hex-interoplated client-side)
-     *         │ │  │  │  └ 32 bytes
-     *         │ │  │  └ keccak256
-     *         │ │  └ dag-cbor (for example)
-     *         │ └ cidv1
-     *         └ base16
-     * ```
+     * Return {IPFT.uri} + "/metadata.json".
      */
     function tokenURI(
         uint256 tokenId
     ) public view override(ERC721) returns (string memory) {
-        return
-            string(
-                abi.encodePacked(
-                    "http://f01",
-                    codec[tokenId].toHexString(),
-                    "1b20{id}.ipfs/metadata.json"
-                )
-            );
+        return string.concat(IPFT.uri(codec[tokenId]), "/metadata.json");
     }
 
     /**
