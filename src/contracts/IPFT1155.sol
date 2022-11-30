@@ -6,27 +6,64 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
-import "./IPFT721.sol";
+import "./IPFT.sol";
 
 /**
  * @title Interplanetary File Token (1155)
  * @author Fancy Software <fancysoft.eth>
  *
- * IPFT(1155) is an ERC-1155-compliant IPFT derivative relying on IPFT(721)
- * to determine minting rights and auxiliary information.
+ * IPFT(1155) is an ERC-1155-compliant IPFT.
  */
 contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
-    IPFT721 public ipft721;
+    /// Get a token owner, if any.
+    mapping(uint256 => address) public owner;
 
-    /** Once a token is finalized, it cannot be minted anymore. */
+    /// Get an owner nonce, used in {mint}.
+    mapping(address => uint32) public nonce;
+
+    /// Get a token content codec (e.g. 0x71 for dag-cbor).
+    mapping(uint256 => uint32) public codec;
+
+    /// Get a token royalty, which is calculated as `royalty / 255`.
+    mapping(uint256 => uint8) public royalty;
+
+    /// Once a token is finalized, it cannot be minted anymore.
     mapping(uint256 => bool) public isFinalized;
 
-    constructor(IPFT721 _ipft721) ERC1155("") {
-        ipft721 = _ipft721;
+    constructor() ERC1155("") {}
+
+    /**
+     * Claim an IPFT ownership by proving that `content`
+     * contains a valid IPFT tag at `offset`.
+     * See {IPFT.prove} for more details.
+     * Once claimed, the token may be {mint}ed.
+     */
+    function claim(
+        uint256 id,
+        bytes calldata content,
+        uint32 offset,
+        uint32 codec_,
+        uint8 royalty_
+    ) public {
+        require(owner[id] == address(0), "IPFT1155: already claimed");
+
+        bytes32 hash = IPFT.prove(
+            content,
+            offset,
+            address(this),
+            msg.sender,
+            nonce[msg.sender]++
+        );
+
+        require(uint256(hash) == id, "IPFT(1155): hash mismatch");
+
+        owner[id] = msg.sender;
+        codec[id] = codec_;
+        royalty[id] = royalty_;
     }
 
     /**
-     * Mint an IPFT(1155) token.
+     * Mint a previously {claim}ed IPFT(1155) token.
      *
      * @param finalize To irreversibly disable further minting for this token.
      */
@@ -38,14 +75,32 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
         bytes calldata data
     ) public {
         require(
-            ipft721.isAuthorized(msg.sender, id),
-            "IPFT(1155): IPFT(721)-unauthorized"
+            owner[id] == msg.sender || isApprovedForAll(owner[id], msg.sender),
+            "IPFT(1155): unauthorized"
         );
 
         require(!isFinalized[id], "IPFT(1155): finalized");
         isFinalized[id] = finalize;
 
         _mint(to, id, amount, data);
+    }
+
+    /**
+     * {claim}, then {mint} in a single transaction.
+     */
+    function claimMint(
+        uint256 id,
+        bytes calldata content,
+        uint32 offset,
+        uint32 codec_,
+        uint8 royalty_,
+        address to,
+        uint256 amount,
+        bool finalize,
+        bytes calldata data
+    ) public {
+        claim(id, content, offset, codec_, royalty_);
+        mint(to, id, amount, finalize, data);
     }
 
     /**
@@ -58,12 +113,13 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
         bool finalize,
         bytes calldata data
     ) public {
-        require(
-            ipft721.isAuthorizedBatch(msg.sender, ids),
-            "IPFT(1155): IPFT(721)-unauthorized"
-        );
-
         for (uint256 i = 0; i < ids.length; i++) {
+            require(
+                owner[ids[i]] == msg.sender ||
+                    isApprovedForAll(owner[ids[i]], msg.sender),
+                "IPFT(1155): unauthorized"
+            );
+
             require(!isFinalized[ids[i]], "IPFT(1155): finalized");
             isFinalized[ids[i]] = finalize;
         }
@@ -80,7 +136,7 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
     }
 
     /**
-     * Return {IPFT-royaltyInfo}.
+     * See {IERC2981-royaltyInfo}.
      */
     function royaltyInfo(
         uint256 tokenId,
@@ -91,16 +147,19 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
         override(IERC2981)
         returns (address receiver, uint256 royaltyAmount)
     {
-        return ipft721.royaltyInfo(tokenId, salePrice);
+        return (
+            owner[tokenId],
+            (salePrice * royalty[tokenId]) / type(uint8).max
+        );
     }
 
     /**
-     * Return {IPFT-tokenURI}.
+     * Return {IPFT.uri} + "/metadata.json".
      */
     function uri(
         uint256 id
     ) public view override(ERC1155) returns (string memory) {
-        return ipft721.tokenURI(id);
+        return string.concat(IPFT.uri(codec[id]), "/metadata.json");
     }
 
     function _beforeTokenTransfer(
