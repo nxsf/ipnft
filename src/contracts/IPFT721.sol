@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
 import "./IPFT.sol";
+import "./ToHexString.sol";
 
 /**
  * @title Interplanetary File Token (721)
@@ -17,6 +18,8 @@ import "./IPFT.sol";
  * the possession of the content containing a valid IPFT tag.
  */
 contract IPFT721 is ERC721, IERC2981 {
+    using ToHexString for uint32;
+
     /// Get a minter nonce, used in {mint}.
     mapping(address => uint32) public nonce;
 
@@ -154,7 +157,7 @@ contract IPFT721 is ERC721, IERC2981 {
             string(
                 abi.encodePacked(
                     "http://f01",
-                    _toHexString(codec[tokenId]),
+                    codec[tokenId].toHexString(),
                     "1b20{id}.ipfs/metadata.json"
                 )
             );
@@ -176,28 +179,5 @@ contract IPFT721 is ERC721, IERC2981 {
             ownerOf(tokenId),
             (salePrice * royalty[tokenId]) / type(uint8).max
         );
-    }
-
-    bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
-
-    function _toHexString(uint32 value) internal pure returns (string memory) {
-        if (value == 0) return "00";
-
-        uint32 temp = value;
-        uint8 length = 0;
-
-        while (temp != 0) {
-            length++;
-            temp >>= 8;
-        }
-
-        bytes memory buffer = new bytes(2 * length);
-
-        for (uint8 i = 2 * length; i > 0; i--) {
-            buffer[i - 1] = _HEX_SYMBOLS[value & 0xf];
-            value >>= 4;
-        }
-
-        return string(buffer);
     }
 }
