@@ -2,10 +2,10 @@ import { expect, use } from "chai";
 import { ethers } from "ethers";
 import { deployContract, MockProvider, solidity } from "ethereum-waffle";
 import ABI from "../../waffle/IPFT.json";
-import { Ipft } from "../../waffle/types/Ipft";
+import { Ipft } from "../../waffle/types/Ipft.js";
 import * as DagCbor from "@ipld/dag-cbor";
+import { keccak256 } from "@multiformats/sha3";
 import { CID } from "multiformats";
-import { sha256 } from "multiformats/hashes/sha2";
 import { ipftTag, getChainId } from "./util.mjs";
 
 use(solidity);
@@ -27,7 +27,7 @@ describe("IPFT", async () => {
         ipft: ipftTag(await getChainId(provider), ipft.address, w0.address, 0),
       });
 
-      const multihash = await sha256.digest(content);
+      const multihash = await keccak256.digest(content);
 
       await expect(
         ipft.mint(
@@ -47,7 +47,7 @@ describe("IPFT", async () => {
         ipft: ipftTag(await getChainId(provider), ipft.address, w0.address, 0),
       });
 
-      const multihash = await sha256.digest(content);
+      const multihash = await keccak256.digest(content);
 
       await ipft.mint(
         w0.address,
@@ -84,7 +84,7 @@ describe("IPFT", async () => {
         ),
       });
 
-      const multihash = await sha256.digest(content);
+      const multihash = await keccak256.digest(content);
 
       await expect(
         ipft.mint(w0.address, multihash.digest, content, 8, DagCbor.code, 10)
@@ -99,10 +99,10 @@ describe("IPFT", async () => {
         ipft: ipftTag(await getChainId(provider), ipft.address, w0.address, 0),
       });
 
-      const multihash = await sha256.digest(content);
+      const multihash = await keccak256.digest(content);
 
       expect(await ipft.tokenURI(multihash.digest)).to.eq(
-        "http://f01711220{id}.ipfs/metadata.json"
+        "http://f01711b20{id}.ipfs/metadata.json"
       );
     });
   });

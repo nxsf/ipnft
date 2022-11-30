@@ -16,6 +16,7 @@
   },
   "devDependencies": {
     "@ipld/dag-cbor": "^8.0.0",
+    "@multiformats/sha3": "^2.0.13",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
     "@nomiclabs/hardhat-waffle": "^2.0.3",
     "@openzeppelin/contracts": "^4.7.3",

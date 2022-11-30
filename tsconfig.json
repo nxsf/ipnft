@@ -8,7 +8,10 @@
     "outDir": "dist",
     "moduleResolution": "Node",
     "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "@multiformats/sha3": ["src/@types/@multiformats/sha3.d.mts"]
+    }
   },
-  "include": ["./test", "./waffle/types/", "./script"]
+  "include": ["./test", "./waffle/types", "./script", "./src/@types"]
 }

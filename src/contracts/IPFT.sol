@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/interfaces/IERC2981.sol";
  * @author Fancy Software <fancysoft.eth>
  *
  * An IPNFT represents a digital copyright for an IPFS CID,
- * where a token ID is the 32-byte SHA-2-256 digest part of it.
+ * where a token ID is the 32-byte keccak256 digest part of it.
  *
  * To {mint} an IPFT with a specific identifier, one must prove
  * the possession of the content containing a valid IPFT tag.
@@ -30,7 +30,7 @@ contract IPFT is ERC721, IERC2981 {
      * Claim an IPFT ownership by proving that `content`
      * contains a nonced 80-byte IPFT tag at `tagOffset`.
      *
-     * First, the SHA-256 hash of the `content` is computed and compared to `id`.
+     * First, the keccak256 hash of the `content` is computed and compared to `id`.
      *
      * Then, at `tagOffset` the following byte sequence is expected:
      *
@@ -47,7 +47,7 @@ contract IPFT is ERC721, IERC2981 {
      * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
      *
      * @param minter    The address of the token minter (must be caller or approved).
-     * @param id        The token id, also the SHA-2-256 hash of `content`.
+     * @param id        The token id, also the keccak256 hash of `content`.
      * @param content   The file containing the IPFT tag.
      * @param tagOffset The IPFT tag offset in bytes.
      * @param codec_    The content codec (e.g. `0x71` for dag-cbor).
@@ -67,7 +67,10 @@ contract IPFT is ERC721, IERC2981 {
         );
 
         // Check the content hash against the token ID.
-        require(uint256(sha256(content)) == id, "IPFT: content hash mismatch");
+        require(
+            uint256(keccak256(content)) == id,
+            "IPFT: content hash mismatch"
+        );
 
         // Check the content length so that it may contain the tag.
         require(content.length >= tagOffset + 80, "IPFT: content too short");
@@ -176,14 +179,14 @@ contract IPFT is ERC721, IERC2981 {
     }
 
     /**
-     * Return string `"http://f01[codec]1220{id}.ipfs/metadata.json"`,
+     * Return string `"http://f01[codec]1b20{id}.ipfs/metadata.json"`,
      * where `[codec]` is replaced automaticly with the actual token codec.
      *
      * ```
-     * http:// f 01 71 12 20 {id} .ipfs /metadata.json
+     * http:// f 01 71 1b 20 {id} .ipfs /metadata.json
      *         │ │  │  │  │  └ Literal "{id}" string (to be hex-interoplated client-side)
      *         │ │  │  │  └ 32 bytes
-     *         │ │  │  └ sha-2-256
+     *         │ │  │  └ keccak256
      *         │ │  └ dag-cbor (for example)
      *         │ └ cidv1
      *         └ base16
@@ -197,7 +200,7 @@ contract IPFT is ERC721, IERC2981 {
                 abi.encodePacked(
                     "http://f01",
                     _toHexString(codec[tokenId]),
-                    "1220{id}.ipfs/metadata.json"
+                    "1b20{id}.ipfs/metadata.json"
                 )
             );
     }

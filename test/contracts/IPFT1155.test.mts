@@ -6,7 +6,7 @@ import Ipft1155ABI from "../../waffle/IPFT1155.json";
 import { Ipft1155 } from "../../waffle/types/Ipft1155";
 import * as DagCbor from "@ipld/dag-cbor";
 import { ByteView, CID, digest } from "multiformats";
-import { sha256 } from "multiformats/hashes/sha2";
+import { keccak256 } from "@multiformats/sha3";
 import { ipftTag, getChainId } from "./util.mjs";
 import { addMonths } from "date-fns";
 import { BigNumber } from "ethers";
@@ -20,7 +20,7 @@ describe("IPFT(1155)", async () => {
   let ipft721: Ipft;
   let ipft1155: Ipft1155;
 
-  let content: ByteView<any>, multihash: digest.Digest<18, number>;
+  let content: ByteView<any>, multihash: digest.Digest<27, number>;
   let expiresAt = Math.round(addMonths(new Date(), 1).valueOf() / 1000);
 
   before(async () => {
@@ -35,7 +35,7 @@ describe("IPFT(1155)", async () => {
       ipft: ipftTag(await getChainId(provider), ipft721.address, w0.address, 0),
     });
 
-    multihash = await sha256.digest(content);
+    multihash = await keccak256.digest(content);
   });
 
   describe("minting", () => {
