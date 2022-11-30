@@ -1,7 +1,7 @@
 import { expect, use } from "chai";
 import { deployContract, MockProvider, solidity } from "ethereum-waffle";
-import IpftABI from "../../waffle/IPFT.json";
-import { Ipft } from "../../waffle/types/Ipft";
+import Ipft721ABI from "../../waffle/IPFT721.json";
+import { Ipft721 } from "../../waffle/types/Ipft721";
 import Ipft1155ABI from "../../waffle/IPFT1155.json";
 import { Ipft1155 } from "../../waffle/types/Ipft1155";
 import * as DagCbor from "@ipld/dag-cbor";
@@ -17,14 +17,14 @@ describe("IPFT(1155)", async () => {
   const provider = new MockProvider();
   const [w0, w1, w2] = provider.getWallets();
 
-  let ipft721: Ipft;
+  let ipft721: Ipft721;
   let ipft1155: Ipft1155;
 
   let content: ByteView<any>, multihash: digest.Digest<27, number>;
   let expiresAt = Math.round(addMonths(new Date(), 1).valueOf() / 1000);
 
   before(async () => {
-    ipft721 = (await deployContract(w0, IpftABI)) as Ipft;
+    ipft721 = (await deployContract(w0, Ipft721ABI)) as Ipft721;
 
     ipft1155 = (await deployContract(w0, Ipft1155ABI, [
       ipft721.address,

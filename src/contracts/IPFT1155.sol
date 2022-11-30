@@ -7,14 +7,17 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/interfaces/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
-import "./IPFT.sol";
+import "./IPFT721.sol";
 
 /**
  * @title Interplanetary File Token (1155)
  * @author Fancy Software <fancysoft.eth>
  *
- * IPFT(1155) is an ERC-1155 {IPFT} derivative that can be (optionally)
- * redeemed by sending it back to this contract.
+ * IPFT(1155) is an ERC-1155-compliant IPFT derivative relying on IPFT(721)
+ * to determine minting rights and auxiliary information.
+ *
+ * An IPFT(1155) can be (optionally) redeemed
+ * by sending back to this contract.
  */
 contract IPFT1155 is
     ERC1155,
@@ -23,7 +26,7 @@ contract IPFT1155 is
     IERC1155Receiver,
     IERC2981
 {
-    IPFT public ipft;
+    IPFT721 public ipft721;
 
     /** Once a token is finalized, it cannot be minted anymore. */
     mapping(uint256 => bool) public isFinalized;
@@ -31,8 +34,8 @@ contract IPFT1155 is
     /** If not zero, the token is considered {isRedeemable}. */
     mapping(uint256 => uint64) public expiredAt;
 
-    constructor(IPFT _ipft) ERC1155("") {
-        ipft = _ipft;
+    constructor(IPFT721 _ipft721) ERC1155("") {
+        ipft721 = _ipft721;
     }
 
     /**
@@ -52,7 +55,7 @@ contract IPFT1155 is
         bytes calldata data
     ) public {
         require(
-            ipft.isAuthorized(msg.sender, id),
+            ipft721.isAuthorized(msg.sender, id),
             "IPFT(1155): IPFT(721)-unauthorized"
         );
 
@@ -77,7 +80,7 @@ contract IPFT1155 is
         bytes calldata data
     ) public {
         require(
-            ipft.isAuthorizedBatch(msg.sender, ids),
+            ipft721.isAuthorizedBatch(msg.sender, ids),
             "IPFT(1155): IPFT(721)-unauthorized"
         );
 
@@ -177,7 +180,7 @@ contract IPFT1155 is
         override(IERC2981)
         returns (address receiver, uint256 royaltyAmount)
     {
-        return ipft.royaltyInfo(tokenId, salePrice);
+        return ipft721.royaltyInfo(tokenId, salePrice);
     }
 
     /**
@@ -186,7 +189,7 @@ contract IPFT1155 is
     function uri(
         uint256 id
     ) public view override(ERC1155) returns (string memory) {
-        return ipft.tokenURI(id);
+        return ipft721.tokenURI(id);
     }
 
     // TODO: Write tests.
