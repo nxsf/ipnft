@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
-import "@openzeppelin/contracts/interfaces/IERC1155Receiver.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
 import "./IPFT721.sol";
@@ -15,24 +14,12 @@ import "./IPFT721.sol";
  *
  * IPFT(1155) is an ERC-1155-compliant IPFT derivative relying on IPFT(721)
  * to determine minting rights and auxiliary information.
- *
- * An IPFT(1155) can be (optionally) redeemed
- * by sending back to this contract.
  */
-contract IPFT1155 is
-    ERC1155,
-    ERC1155Burnable,
-    ERC1155Supply,
-    IERC1155Receiver,
-    IERC2981
-{
+contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
     IPFT721 public ipft721;
 
     /** Once a token is finalized, it cannot be minted anymore. */
     mapping(uint256 => bool) public isFinalized;
-
-    /** If not zero, the token is considered {isRedeemable}. */
-    mapping(uint256 => uint64) public expiredAt;
 
     constructor(IPFT721 _ipft721) ERC1155("") {
         ipft721 = _ipft721;
@@ -41,17 +28,13 @@ contract IPFT1155 is
     /**
      * Mint an IPFT(1155) token.
      *
-     * @param finalize   To irreversibly disable further minting for this token.
-     * @param expiredAt_ The timestamp the token ceases to be redeemable at.
-     * May pass new value to update the expiration date.
-     * If zero, the token is not considered redeemable.
+     * @param finalize To irreversibly disable further minting for this token.
      */
     function mint(
         address to,
         uint256 id,
         uint256 amount,
         bool finalize,
-        uint64 expiredAt_,
         bytes calldata data
     ) public {
         require(
@@ -59,12 +42,9 @@ contract IPFT1155 is
             "IPFT(1155): IPFT(721)-unauthorized"
         );
 
-        require(to != address(this), "IPFT(1155): mint to this");
-
         require(!isFinalized[id], "IPFT(1155): finalized");
         isFinalized[id] = finalize;
 
-        _updateExpiredAt(id, expiredAt_);
         _mint(to, id, amount, data);
     }
 
@@ -76,7 +56,6 @@ contract IPFT1155 is
         uint256[] calldata ids,
         uint256[] calldata amounts,
         bool finalize,
-        uint64 expiredAt_,
         bytes calldata data
     ) public {
         require(
@@ -84,86 +63,18 @@ contract IPFT1155 is
             "IPFT(1155): IPFT(721)-unauthorized"
         );
 
-        require(to != address(this), "IPFT(1155): mint to this");
-
         for (uint256 i = 0; i < ids.length; i++) {
             require(!isFinalized[ids[i]], "IPFT(1155): finalized");
             isFinalized[ids[i]] = finalize;
-
-            _updateExpiredAt(ids[i], expiredAt_);
         }
 
         _mintBatch(to, ids, amounts, data);
-    }
-
-    /**
-     * Return true if {expiredAt} of the token is not zero.
-     * Reverts if the token does not {exists}.
-     */
-    function isRedeemable(uint256 tokenId) public view returns (bool) {
-        require(exists(tokenId), "IPFT(1155): does not exist");
-        return expiredAt[tokenId] != 0;
-    }
-
-    /**
-     * Return true if a redeemable token has expired.
-     * Reverts if the token not {isRedeemable}.
-     */
-    function hasExpired(uint256 tokenId) public view returns (bool) {
-        require(isRedeemable(tokenId), "IPFT(1155): not redeemable");
-        return block.timestamp > expiredAt[tokenId];
-    }
-
-    /**
-     * Redeem a single token by transferring it back to this contract.
-     * The token must be {isRedeemable} and not {hasExpired}.
-     * @notice The total supply of the token would stay the same.
-     */
-    function onERC1155Received(
-        address,
-        address,
-        uint256 id,
-        uint256 value,
-        bytes calldata
-    ) external view override(IERC1155Receiver) returns (bytes4) {
-        require(
-            msg.sender == address(this),
-            "IPFT(1155): not from this contract"
-        );
-
-        _ensureRedeemable(id, value);
-
-        return IERC1155Receiver.onERC1155Received.selector;
-    }
-
-    /**
-     * Redeem a batch of tokens by transferring it back to this contract.
-     * See {onERC1155Received}.
-     */
-    function onERC1155BatchReceived(
-        address,
-        address,
-        uint256[] calldata ids,
-        uint256[] calldata values,
-        bytes calldata
-    ) external view override(IERC1155Receiver) returns (bytes4) {
-        require(
-            msg.sender == address(this),
-            "IPFT(1155): not from this contract"
-        );
-
-        for (uint256 i = 0; i < ids.length; i++) {
-            _ensureRedeemable(ids[i], values[i]);
-        }
-
-        return IERC1155Receiver.onERC1155BatchReceived.selector;
     }
 
     function supportsInterface(
         bytes4 interfaceId
     ) public view override(ERC1155, IERC165) returns (bool) {
         return
-            interfaceId == type(IERC1155Receiver).interfaceId ||
             interfaceId == type(IERC2981).interfaceId ||
             super.supportsInterface(interfaceId);
     }
@@ -192,28 +103,6 @@ contract IPFT1155 is
         return ipft721.tokenURI(id);
     }
 
-    // TODO: Write tests.
-    function _updateExpiredAt(uint256 id, uint64 expiredAt_) internal {
-        if (exists(id)) {
-            if (expiredAt[id] == 0) {
-                require(expiredAt_ == 0, "IPFT(1155): not redeemable");
-            } else {
-                require(
-                    expiredAt_ >= expiredAt[id],
-                    "IPFT(1155): expiredAt is less than current"
-                );
-                require(expiredAt_ > block.timestamp, "IPFT(1155): expired");
-            }
-        } else {
-            require(
-                expiredAt_ == 0 || expiredAt_ > block.timestamp,
-                "IPFT(1155): expired"
-            );
-        }
-
-        expiredAt[id] = expiredAt_;
-    }
-
     function _beforeTokenTransfer(
         address operator,
         address from,
@@ -223,11 +112,5 @@ contract IPFT1155 is
         bytes memory data
     ) internal override(ERC1155, ERC1155Supply) {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-    }
-
-    function _ensureRedeemable(uint256 id, uint256 value) internal view {
-        require(isRedeemable(id), "IPFT(1155): not minted");
-        require(!hasExpired(id), "IPFT(1155): expired");
-        require(value > 0, "IPFT(1155): redeemable value is zero");
     }
 }
