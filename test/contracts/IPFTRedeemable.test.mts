@@ -1,5 +1,6 @@
 import { expect, use } from "chai";
-import { deployContract, MockProvider, solidity } from "ethereum-waffle";
+import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
+import IpftABI from "../../waffle/IPFT.json";
 import IpftRedeemableABI from "../../waffle/IPFTRedeemable.json";
 import { IpftRedeemable } from "../../waffle/types/IpftRedeemable";
 import * as DagCbor from "@ipld/dag-cbor";
@@ -21,6 +22,9 @@ describe("IPFT(Redeemable)", async () => {
   let expiresAt = Math.round(addMonths(new Date(), 1).valueOf() / 1000);
 
   before(async () => {
+    const ipft = await deployContract(w0, IpftABI, []);
+    link(IpftRedeemableABI, "src/contracts/IPFT.sol:IPFT", ipft.address);
+
     ipft1155Redeemable = (await deployContract(
       w0,
       IpftRedeemableABI
@@ -55,14 +59,16 @@ describe("IPFT(Redeemable)", async () => {
       });
 
       after(async () => {
-        await ipft1155Redeemable.claim(
-          w0.address,
-          multihash.digest,
-          content,
-          8,
-          DagCbor.code,
-          10
-        );
+        expect(
+          await ipft1155Redeemable.claim(multihash.digest, {
+            author: w0.address,
+            tagOffset: 8,
+            codec: DagCbor.code,
+            royalty: 10,
+            content,
+          })
+        ).to.emit(ipft1155Redeemable, "Claim");
+        // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
       });
     });
 
@@ -77,7 +83,6 @@ describe("IPFT(Redeemable)", async () => {
           multihash.digest
         );
 
-        // TODO: Test `Claim` event.
         await ipft1155Redeemable.mint(
           w0.address,
           multihash.digest,
@@ -236,17 +241,21 @@ describe("IPFT(Redeemable)", async () => {
         multihash1.digest
       );
 
-      await ipft1155Redeemable.claimMint(content1, [], {
-        author: w0.address,
-        id: multihash1.digest,
-        offset: 8,
-        codec: DagCbor.code,
-        royalty: 10,
-        to: w1.address,
-        amount: 10,
-        finalize: false,
-        expiredAt: Math.round(addMonths(new Date(), 2).valueOf() / 1000),
-      });
+      await ipft1155Redeemable.claimMint(
+        multihash1.digest,
+        {
+          author: w0.address,
+          tagOffset: 8,
+          codec: DagCbor.code,
+          royalty: 10,
+          content: content1,
+        },
+        w1.address,
+        10,
+        false,
+        Math.round(addMonths(new Date(), 2).valueOf() / 1000),
+        []
+      );
 
       expect(
         await ipft1155Redeemable.balanceOf(w1.address, multihash1.digest)

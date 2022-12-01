@@ -3,8 +3,9 @@
 
 import { expect, use } from "chai";
 import { ethers } from "ethers";
-import { deployContract, MockProvider, solidity } from "ethereum-waffle";
-import ABI from "../../waffle/IPFT721.json";
+import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
+import IpftABI from "../../waffle/IPFT.json";
+import Ipft721ABI from "../../waffle/IPFT721.json";
 import { Ipft721 } from "../../waffle/types/Ipft721.js";
 import * as DagCbor from "@ipld/dag-cbor";
 import { keccak256 } from "@multiformats/sha3";
@@ -20,7 +21,9 @@ describe("IPFT(721)", async () => {
   let ipft721: Ipft721;
 
   before(async () => {
-    ipft721 = (await deployContract(w0, ABI)) as Ipft721;
+    const ipft = await deployContract(w0, IpftABI);
+    link(Ipft721ABI, "src/contracts/IPFT.sol:IPFT", ipft.address);
+    ipft721 = (await deployContract(w0, Ipft721ABI)) as Ipft721;
   });
 
   describe("minting", () => {

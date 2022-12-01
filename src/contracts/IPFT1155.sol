@@ -15,6 +15,28 @@ import "./IPFT.sol";
  * IPFT(1155) is an ERC-1155-compliant IPFT.
  */
 contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
+    /// Arguments for the {claim} function.
+    struct ClaimArgs {
+        /// The to-become-token-author address.
+        address author;
+        ///  The file containing an IPFT tag.
+        bytes content;
+        /// The IPFT tag offset in bytes.
+        uint32 tagOffset;
+        /// The content codec (e.g. `0x71` for dag-cbor).
+        uint32 codec;
+        /// The token royalty, calculated as `royalty / 255`.
+        uint8 royalty;
+    }
+
+    /// Emitted when an IPFT authorship is claimed.
+    event Claim(
+        address operator,
+        address indexed author,
+        uint256 id,
+        uint32 codec
+    );
+
     /// Get a token author, if any.
     mapping(uint256 => address) public author;
 
@@ -33,42 +55,36 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
     constructor() ERC1155("") {}
 
     /**
-     * Claim an IPFT ownership by proving that `content`
+     * Claim an IPFT ownership by verifying that `content`
      * contains a valid IPFT tag at `offset`.
-     * See {IPFT.prove} for more details.
+     * See {IPFT.verify} for more details.
      * Once claimed, the token may be {mint}ed.
      * Emits {Claim}.
      */
-    function claim(
-        address author_,
-        uint256 id,
-        bytes calldata content,
-        uint32 tagOffset,
-        uint32 codec_,
-        uint8 royalty_
-    ) public {
+    function claim(uint256 id, ClaimArgs calldata args) public {
         require(
-            msg.sender == author_ || isApprovedForAll(author_, msg.sender),
+            msg.sender == args.author ||
+                isApprovedForAll(args.author, msg.sender),
             "IPFT(1155): unauthorized"
         );
 
         require(author[id] == address(0), "IPFT(1155): already claimed");
 
-        bytes32 hash = IPFT.prove(
-            content,
-            tagOffset,
+        bytes32 hash = IPFT.verify(
+            args.content,
+            args.tagOffset,
             address(this),
-            author_,
-            authorNonce[author_]++
+            args.author,
+            authorNonce[args.author]++
         );
 
         require(uint256(hash) == id, "IPFT(1155): hash mismatch");
 
-        author[id] = author_;
-        codec[id] = codec_;
-        royalty[id] = royalty_;
+        author[id] = args.author;
+        codec[id] = args.codec;
+        royalty[id] = args.royalty;
 
-        emit IPFT.Claim(msg.sender, author_, id, codec_);
+        emit Claim(msg.sender, args.author, id, args.codec);
     }
 
     /**
@@ -95,36 +111,19 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
         _mint(to, id, amount, data);
     }
 
-    /// A struct to overcome the Solidity stack size limits.
-    struct ClaimMintArgs {
-        address author;
-        uint256 id;
-        uint32 offset;
-        uint32 codec;
-        uint8 royalty;
-        address to;
-        uint256 amount;
-        bool finalize;
-    }
-
     /**
      * {claim}, then {mint} in a single transaction.
      */
     function claimMint(
-        bytes calldata content,
-        bytes calldata data,
-        ClaimMintArgs calldata args
+        uint256 id,
+        ClaimArgs calldata claimArgs,
+        address to,
+        uint256 amount,
+        bool finalize,
+        bytes calldata data
     ) public {
-        claim(
-            args.author,
-            args.id,
-            content,
-            args.offset,
-            args.codec,
-            args.royalty
-        );
-
-        mint(args.to, args.id, args.amount, args.finalize, data);
+        claim(id, claimArgs);
+        mint(to, id, amount, finalize, data);
     }
 
     /**

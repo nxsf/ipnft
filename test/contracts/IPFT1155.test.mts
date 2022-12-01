@@ -1,5 +1,6 @@
 import { expect, use } from "chai";
-import { deployContract, MockProvider, solidity } from "ethereum-waffle";
+import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
+import IpftABI from "../../waffle/IPFT.json";
 import Ipft1155ABI from "../../waffle/IPFT1155.json";
 import { Ipft1155 } from "../../waffle/types/Ipft1155";
 import * as DagCbor from "@ipld/dag-cbor";
@@ -18,6 +19,9 @@ describe("IPFT(1155)", async () => {
   let multihash: digest.Digest<27, number>;
 
   before(async () => {
+    const ipft = await deployContract(w0, IpftABI, []);
+    link(Ipft1155ABI, "src/contracts/IPFT.sol:IPFT", ipft.address);
+
     ipft1155 = (await deployContract(w0, Ipft1155ABI)) as Ipft1155;
 
     content = DagCbor.encode({
@@ -42,14 +46,16 @@ describe("IPFT(1155)", async () => {
       });
 
       after(async () => {
-        await ipft1155.claim(
-          w0.address,
-          multihash.digest,
-          content,
-          8,
-          DagCbor.code,
-          10
-        );
+        expect(
+          await ipft1155.claim(multihash.digest, {
+            author: w0.address,
+            tagOffset: 8,
+            codec: DagCbor.code,
+            royalty: 10,
+            content,
+          })
+        ).to.emit(ipft1155, "Claim");
+        // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
       });
     });
 
@@ -62,7 +68,6 @@ describe("IPFT(1155)", async () => {
 
         const totalSupplyBefore = await ipft1155.totalSupply(multihash.digest);
 
-        // TODO: Test `Claim` event.
         await ipft1155.mint(w0.address, multihash.digest, 10, false, []);
 
         expect(await ipft1155.balanceOf(w0.address, multihash.digest)).to.eq(
@@ -140,16 +145,20 @@ describe("IPFT(1155)", async () => {
 
       const totalSupplyBefore = await ipft1155.totalSupply(multihash1.digest);
 
-      await ipft1155.claimMint(content1, [], {
-        author: w0.address,
-        id: multihash1.digest,
-        offset: 8,
-        codec: DagCbor.code,
-        royalty: 10,
-        to: w1.address,
-        amount: 10,
-        finalize: false,
-      });
+      await ipft1155.claimMint(
+        multihash1.digest,
+        {
+          author: w0.address,
+          tagOffset: 8,
+          codec: DagCbor.code,
+          royalty: 10,
+          content: content1,
+        },
+        w1.address,
+        10,
+        false,
+        []
+      );
 
       expect(await ipft1155.balanceOf(w1.address, multihash1.digest)).to.eq(
         w1BalanceBefore.add(10)

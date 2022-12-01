@@ -6,14 +6,6 @@ import "./ToHexString.sol";
 library IPFT {
     using ToHexString for uint32;
 
-    /// Emitted when an IPFT authorship is claimed.
-    event Claim(
-        address operator,
-        address indexed author,
-        uint256 id,
-        uint32 codec
-    );
-
     /**
      * Prove an IPFT authorship by proving that `content`
      * contains a nonced 80-byte IPFT tag at `offset`.
@@ -29,13 +21,13 @@ library IPFT {
      *
      * @return hash The keccak256 hash of `content`.
      */
-    function prove(
+    function verify(
         bytes calldata content,
         uint32 offset,
         address contractAddr,
         address author,
         uint32 nonce
-    ) internal view returns (bytes32 hash) {
+    ) external view returns (bytes32 hash) {
         // Check the content length so that it may contain the tag.
         require(content.length >= offset + 80, "IPFT: content too short");
 
@@ -86,7 +78,7 @@ library IPFT {
      *         └ base16
      * ```
      */
-    function uri(uint32 contentCodec) internal pure returns (string memory) {
+    function uri(uint32 contentCodec) external pure returns (string memory) {
         return
             string(
                 abi.encodePacked(

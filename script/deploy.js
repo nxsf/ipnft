@@ -1,7 +1,7 @@
 const { ethers } = require("hardhat");
 
-async function deploy(contractName, ...args) {
-  const factory = await ethers.getContractFactory(contractName);
+async function deploy(contractName, deployOptions = {}, ...args) {
+  const factory = await ethers.getContractFactory(contractName, deployOptions);
   const instance = await factory.deploy(...args);
   await instance.deployed();
   console.log(contractName, "deployed to", instance.address);
@@ -9,9 +9,10 @@ async function deploy(contractName, ...args) {
 }
 
 async function main() {
-  await deploy("IPFT721");
-  await deploy("IPFT1155");
-  await deploy("IPFTRedeemable");
+  const ipft = await deploy("IPFT");
+  await deploy("IPFT721", { libraries: { IPFT: ipft.address } });
+  await deploy("IPFT1155", { libraries: { IPFT: ipft.address } });
+  await deploy("IPFTRedeemable", { libraries: { IPFT: ipft.address } });
 }
 
 main()

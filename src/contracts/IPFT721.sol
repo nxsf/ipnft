@@ -17,6 +17,14 @@ import "./IPFT.sol";
  * the possession of the content containing a valid IPFT tag.
  */
 contract IPFT721 is ERC721, IERC2981 {
+    /// Emitted when an IPFT authorship is claimed.
+    event Claim(
+        address operator,
+        address indexed author,
+        uint256 id,
+        uint32 codec
+    );
+
     /// Get a token author nonce, used in {mint}.
     mapping(address => uint32) public authorNonce;
 
@@ -37,7 +45,7 @@ contract IPFT721 is ERC721, IERC2981 {
     }
 
     /**
-     * Claim an IPFT(721) by proving its authorship (see {IPFT.prove}).
+     * Claim an IPFT(721) by proving its authorship (see {IPFT.verify}).
      * Upon success, a brand-new IPFT is minted to `to`.
      *
      * @notice The content shall have an ERC721 Metadata JSON file resolvable
@@ -51,7 +59,7 @@ contract IPFT721 is ERC721, IERC2981 {
      * @param args.codec   The content codec (e.g. `0x71` for dag-cbor).
      * @param args.royalty The token royalty, calculated as `royalty / 255`.
      *
-     * Emits {IPFT.Claim}.
+     * Emits {Claim}.
      */
     function mint(
         uint256 id,
@@ -66,7 +74,7 @@ contract IPFT721 is ERC721, IERC2981 {
         );
 
         uint256 hash = uint256(
-            IPFT.prove(
+            IPFT.verify(
                 content,
                 tagOffset,
                 address(this),
@@ -87,7 +95,7 @@ contract IPFT721 is ERC721, IERC2981 {
         // Mint the IPFT(721).
         _mint(args.to, id);
 
-        emit IPFT.Claim(msg.sender, args.author, id, args.codec);
+        emit Claim(msg.sender, args.author, id, args.codec);
     }
 
     /**
