@@ -6,13 +6,15 @@ export function ipftTag(
   author: string,
   nonce: number
 ) {
-  const tag = Buffer.alloc(80);
+  const tag = Buffer.alloc(84);
 
-  tag.writeUint32BE(0x65766d01); // "evm" + version
-  tag.write(chainId.toString(16).padStart(64, "0"), 4, 32, "hex");
-  tag.write(contractAddress.slice(2), 36, 20, "hex");
-  tag.write(author.slice(2), 56, 20, "hex");
-  tag.writeUInt32BE(nonce, 76);
+  tag.writeUint32BE(0x69706674); // "ipft"
+  tag.writeUint8(0x01, 4); // version
+  tag.writeUint32BE(0x65766d00, 5); // "evm\0"
+  tag.write(chainId.toString(16).padStart(64, "0"), 8, 32, "hex");
+  tag.write(contractAddress.slice(2), 40, 20, "hex");
+  tag.write(author.slice(2), 60, 20, "hex");
+  tag.writeUInt32BE(nonce, 80);
 
   return tag;
 }

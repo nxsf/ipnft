@@ -52,7 +52,7 @@ describe("IPFT(721)", async () => {
             royalty: 0,
           }
         )
-      ).to.be.revertedWith("IPFT: invalid tag version");
+      ).to.be.revertedWith("IPFT: invalid magic bytes");
     });
 
     it("works", async () => {
