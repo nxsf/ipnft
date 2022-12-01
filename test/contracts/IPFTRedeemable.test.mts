@@ -56,6 +56,7 @@ describe("IPFT(Redeemable)", async () => {
 
       after(async () => {
         await ipft1155Redeemable.claim(
+          w0.address,
           multihash.digest,
           content,
           8,
@@ -76,6 +77,7 @@ describe("IPFT(Redeemable)", async () => {
           multihash.digest
         );
 
+        // TODO: Test `Claim` event.
         await ipft1155Redeemable.mint(
           w0.address,
           multihash.digest,
@@ -234,20 +236,17 @@ describe("IPFT(Redeemable)", async () => {
         multihash1.digest
       );
 
-      await ipft1155Redeemable.claimMint(
-        {
-          id: multihash1.digest,
-          offset: 8,
-          codec_: DagCbor.code,
-          royalty_: 10,
-          to: w1.address,
-          amount: 10,
-          finalize: false,
-          expiredAt_: Math.round(addMonths(new Date(), 2).valueOf() / 1000),
-        },
-        content1,
-        []
-      );
+      await ipft1155Redeemable.claimMint(content1, [], {
+        author: w0.address,
+        id: multihash1.digest,
+        offset: 8,
+        codec: DagCbor.code,
+        royalty: 10,
+        to: w1.address,
+        amount: 10,
+        finalize: false,
+        expiredAt: Math.round(addMonths(new Date(), 2).valueOf() / 1000),
+      });
 
       expect(
         await ipft1155Redeemable.balanceOf(w1.address, multihash1.digest)

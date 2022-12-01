@@ -23,11 +23,11 @@ contract IPFTRedeemable is
     IERC1155Receiver,
     IERC2981
 {
-    /// Get a token owner, if any.
-    mapping(uint256 => address) public owner;
+    /// Get a token author, if any.
+    mapping(uint256 => address) public author;
 
-    /// Get an owner nonce, used in {mint}.
-    mapping(address => uint32) public nonce;
+    /// Get a token author nonce, used in {claim}.
+    mapping(address => uint32) public authorNonce;
 
     /// Get a token content codec (e.g. 0x71 for dag-cbor).
     mapping(uint256 => uint32) public codec;
@@ -45,29 +45,41 @@ contract IPFTRedeemable is
 
     /**
      * Claim an IPFT ownership by proving that `content`
-     * contains a valid IPFT tag at `offset`.
+     * contains a valid IPFT tag at `tagOffset`.
      * See {IPFT.prove} for more details.
      * Once claimed, the token may be {mint}ed.
+     * Emits {IPFT.Claim}.
      */
     function claim(
+        address author_,
         uint256 id,
         bytes calldata content,
-        uint32 offset,
+        uint32 tagOffset,
         uint32 codec_,
         uint8 royalty_
     ) public {
-        require(owner[id] == address(0), "IPFT(Redeemable): already claimed");
+        require(
+            msg.sender == author_ || isApprovedForAll(author_, msg.sender),
+            "IPFT(1155): unauthorized"
+        );
+
+        require(author[id] == address(0), "IPFT(Redeemable): already claimed");
+
         bytes32 hash = IPFT.prove(
             content,
-            offset,
+            tagOffset,
             address(this),
-            msg.sender,
-            nonce[msg.sender]++
+            author_,
+            authorNonce[author_]++
         );
+
         require(uint256(hash) == id, "IPFT(Redeemable): hash mismatch");
-        owner[id] = msg.sender;
+
+        author[id] = author_;
         codec[id] = codec_;
         royalty[id] = royalty_;
+
+        emit IPFT.Claim(msg.sender, author_, id, codec_);
     }
 
     /**
@@ -88,12 +100,16 @@ contract IPFTRedeemable is
         bytes calldata data
     ) public {
         require(
-            owner[id] == msg.sender || isApprovedForAll(owner[id], msg.sender),
+            author[id] == msg.sender ||
+                isApprovedForAll(author[id], msg.sender),
             "IPFT(Redeemable): unauthorized"
         );
+
         require(to != address(this), "IPFT(Redeemable): mint to this");
+
         require(!isFinalized[id], "IPFT(Redeemable): finalized");
         isFinalized[id] = finalize;
+
         _updateExpiredAt(id, expiredAt_);
         _mint(to, id, amount, data);
     }
@@ -110,46 +126,59 @@ contract IPFTRedeemable is
         bytes calldata data
     ) public {
         require(to != address(this), "IPFT(Redeemable): mint to this");
+
         for (uint256 i = 0; i < ids.length; i++) {
             require(
-                owner[ids[i]] == msg.sender ||
-                    isApprovedForAll(owner[ids[i]], msg.sender),
+                author[ids[i]] == msg.sender ||
+                    isApprovedForAll(author[ids[i]], msg.sender),
                 "IPFT(Redeemable): unauthorized"
             );
+
             require(!isFinalized[ids[i]], "IPFT(Redeemable): finalized");
             isFinalized[ids[i]] = finalize;
+
             _updateExpiredAt(ids[i], expiredAt_);
         }
+
         _mintBatch(to, ids, amounts, data);
     }
 
     /// A struct to overcome the Solidity stack size limits.
     struct ClaimMintArgs {
+        address author;
         uint256 id;
         uint32 offset;
-        uint32 codec_;
-        uint8 royalty_;
+        uint32 codec;
+        uint8 royalty;
         address to;
         uint256 amount;
         bool finalize;
-        uint64 expiredAt_;
+        uint64 expiredAt;
     }
 
     /**
      * {claim}, then {mint} in one transaction.
      */
     function claimMint(
-        ClaimMintArgs calldata args,
         bytes calldata content,
-        bytes calldata data
+        bytes calldata data,
+        ClaimMintArgs calldata args
     ) public {
-        claim(args.id, content, args.offset, args.codec_, args.royalty_);
+        claim(
+            args.author,
+            args.id,
+            content,
+            args.offset,
+            args.codec,
+            args.royalty
+        );
+
         mint(
             args.to,
             args.id,
             args.amount,
             args.finalize,
-            args.expiredAt_,
+            args.expiredAt,
             data
         );
     }
@@ -228,7 +257,7 @@ contract IPFTRedeemable is
         returns (address receiver, uint256 royaltyAmount)
     {
         return (
-            owner[tokenId],
+            author[tokenId],
             (salePrice * royalty[tokenId]) / type(uint8).max
         );
     }

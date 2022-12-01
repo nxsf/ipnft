@@ -3,16 +3,16 @@ import { ethers } from "ethers";
 export function ipftTag(
   chainId: number,
   contractAddress: string,
-  minterAddress: string,
-  minterNonce: number
+  author: string,
+  nonce: number
 ) {
   const tag = Buffer.alloc(80);
 
-  tag.writeUint32BE(0x65766d01);
+  tag.writeUint32BE(0x65766d01); // "evm" + version
   tag.write(chainId.toString(16).padStart(64, "0"), 4, 32, "hex");
   tag.write(contractAddress.slice(2), 36, 20, "hex");
-  tag.write(minterAddress.slice(2), 56, 20, "hex");
-  tag.writeUInt32BE(minterNonce, 76);
+  tag.write(author.slice(2), 56, 20, "hex");
+  tag.writeUInt32BE(nonce, 76);
 
   return tag;
 }

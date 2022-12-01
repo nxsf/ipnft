@@ -15,11 +15,11 @@ import "./IPFT.sol";
  * IPFT(1155) is an ERC-1155-compliant IPFT.
  */
 contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
-    /// Get a token owner, if any.
-    mapping(uint256 => address) public owner;
+    /// Get a token author, if any.
+    mapping(uint256 => address) public author;
 
-    /// Get an owner nonce, used in {mint}.
-    mapping(address => uint32) public nonce;
+    /// Get a token author nonce, used in {claim}.
+    mapping(address => uint32) public authorNonce;
 
     /// Get a token content codec (e.g. 0x71 for dag-cbor).
     mapping(uint256 => uint32) public codec;
@@ -37,29 +37,38 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
      * contains a valid IPFT tag at `offset`.
      * See {IPFT.prove} for more details.
      * Once claimed, the token may be {mint}ed.
+     * Emits {Claim}.
      */
     function claim(
+        address author_,
         uint256 id,
         bytes calldata content,
-        uint32 offset,
+        uint32 tagOffset,
         uint32 codec_,
         uint8 royalty_
     ) public {
-        require(owner[id] == address(0), "IPFT1155: already claimed");
+        require(
+            msg.sender == author_ || isApprovedForAll(author_, msg.sender),
+            "IPFT(1155): unauthorized"
+        );
+
+        require(author[id] == address(0), "IPFT(1155): already claimed");
 
         bytes32 hash = IPFT.prove(
             content,
-            offset,
+            tagOffset,
             address(this),
-            msg.sender,
-            nonce[msg.sender]++
+            author_,
+            authorNonce[author_]++
         );
 
         require(uint256(hash) == id, "IPFT(1155): hash mismatch");
 
-        owner[id] = msg.sender;
+        author[id] = author_;
         codec[id] = codec_;
         royalty[id] = royalty_;
+
+        emit IPFT.Claim(msg.sender, author_, id, codec_);
     }
 
     /**
@@ -75,7 +84,8 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
         bytes calldata data
     ) public {
         require(
-            owner[id] == msg.sender || isApprovedForAll(owner[id], msg.sender),
+            author[id] == msg.sender ||
+                isApprovedForAll(author[id], msg.sender),
             "IPFT(1155): unauthorized"
         );
 
@@ -85,22 +95,36 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
         _mint(to, id, amount, data);
     }
 
+    /// A struct to overcome the Solidity stack size limits.
+    struct ClaimMintArgs {
+        address author;
+        uint256 id;
+        uint32 offset;
+        uint32 codec;
+        uint8 royalty;
+        address to;
+        uint256 amount;
+        bool finalize;
+    }
+
     /**
      * {claim}, then {mint} in a single transaction.
      */
     function claimMint(
-        uint256 id,
         bytes calldata content,
-        uint32 offset,
-        uint32 codec_,
-        uint8 royalty_,
-        address to,
-        uint256 amount,
-        bool finalize,
-        bytes calldata data
+        bytes calldata data,
+        ClaimMintArgs calldata args
     ) public {
-        claim(id, content, offset, codec_, royalty_);
-        mint(to, id, amount, finalize, data);
+        claim(
+            args.author,
+            args.id,
+            content,
+            args.offset,
+            args.codec,
+            args.royalty
+        );
+
+        mint(args.to, args.id, args.amount, args.finalize, data);
     }
 
     /**
@@ -115,8 +139,8 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
     ) public {
         for (uint256 i = 0; i < ids.length; i++) {
             require(
-                owner[ids[i]] == msg.sender ||
-                    isApprovedForAll(owner[ids[i]], msg.sender),
+                author[ids[i]] == msg.sender ||
+                    isApprovedForAll(author[ids[i]], msg.sender),
                 "IPFT(1155): unauthorized"
             );
 
@@ -148,7 +172,7 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
         returns (address receiver, uint256 royaltyAmount)
     {
         return (
-            owner[tokenId],
+            author[tokenId],
             (salePrice * royalty[tokenId]) / type(uint8).max
         );
     }

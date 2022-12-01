@@ -39,12 +39,15 @@ describe("IPFT(721)", async () => {
 
       await expect(
         ipft721.mint(
-          w0.address,
           multihash.digest,
           content,
           9, // This
-          DagCbor.code,
-          0
+          {
+            author: w0.address,
+            to: w0.address,
+            codec: DagCbor.code,
+            royalty: 0,
+          }
         )
       ).to.be.revertedWith("IPFT: invalid tag version");
     });
@@ -62,18 +65,19 @@ describe("IPFT(721)", async () => {
 
       const multihash = await keccak256.digest(content);
 
-      await ipft721.mint(
-        w0.address,
-        multihash.digest,
-        content,
-        8,
-        DagCbor.code,
-        10
+      // TODO: Test `Claim` event.
+      expect(
+        await ipft721.mint(multihash.digest, content, 8, {
+          author: w0.address,
+          to: w0.address,
+          codec: DagCbor.code,
+          royalty: 10,
+        })
       );
 
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);
       expect(await ipft721.ownerOf(multihash.digest)).to.eq(w0.address);
-      expect(await ipft721.nonce(w0.address)).to.eq(1);
+      expect(await ipft721.authorNonce(w0.address)).to.eq(1);
 
       const royaltyInfo = await ipft721.royaltyInfo(
         multihash.digest,
@@ -100,7 +104,12 @@ describe("IPFT(721)", async () => {
       const multihash = await keccak256.digest(content);
 
       await expect(
-        ipft721.mint(w0.address, multihash.digest, content, 8, DagCbor.code, 10)
+        ipft721.mint(multihash.digest, content, 8, {
+          author: w0.address,
+          to: w0.address,
+          codec: DagCbor.code,
+          royalty: 10,
+        })
       ).to.be.revertedWith("IPFT: invalid nonce");
     });
   });

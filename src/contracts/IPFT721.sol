@@ -17,8 +17,8 @@ import "./IPFT.sol";
  * the possession of the content containing a valid IPFT tag.
  */
 contract IPFT721 is ERC721, IERC2981 {
-    /// Get a minter nonce, used in {mint}.
-    mapping(address => uint32) public nonce;
+    /// Get a token author nonce, used in {mint}.
+    mapping(address => uint32) public authorNonce;
 
     /// Get a token content codec (e.g. 0x71 for dag-cbor).
     mapping(uint256 => uint32) public codec;
@@ -28,35 +28,50 @@ contract IPFT721 is ERC721, IERC2981 {
 
     constructor() ERC721("IPFT721", "IPFT") {}
 
+    /// A struct to overcome the Solidity stack size limits.
+    struct MintArgs {
+        address author;
+        address to;
+        uint32 codec;
+        uint8 royalty;
+    }
+
     /**
-     * Claim an IPFT(721) by proving its ownership (see {IPFT.prove}).
+     * Claim an IPFT(721) by proving its authorship (see {IPFT.prove}).
      * Upon success, a brand-new IPFT is minted to `to`.
      *
      * @notice The content shall have an ERC721 Metadata JSON file resolvable
      * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
      *
-     * @param to        The address to mint the token to.
-     * @param id        The token id, also the keccak256 hash of `content`.
-     * @param content   The file containing an IPFT tag.
-     * @param tagOffset The IPFT tag offset in bytes.
-     * @param codec_    The content codec (e.g. `0x71` for dag-cbor).
-     * @param royalty_  The token royalty, calculated as `royalty / 255`.
+     * @param id           The token id, also the keccak256 hash of `content`.
+     * @param content      The file containing an IPFT tag.
+     * @param tagOffset    The IPFT tag offset in bytes.
+     * @param args.author  The to-become-author address.
+     * @param args.to      The address to mint the token to.
+     * @param args.codec   The content codec (e.g. `0x71` for dag-cbor).
+     * @param args.royalty The token royalty, calculated as `royalty / 255`.
+     *
+     * Emits {IPFT.Claim}.
      */
     function mint(
-        address to,
         uint256 id,
         bytes calldata content,
         uint32 tagOffset,
-        uint32 codec_,
-        uint8 royalty_
+        MintArgs calldata args
     ) public {
+        require(
+            msg.sender == args.author ||
+                isApprovedForAll(args.author, msg.sender),
+            "IPFT(721): unauthorized"
+        );
+
         uint256 hash = uint256(
             IPFT.prove(
                 content,
                 tagOffset,
                 address(this),
-                msg.sender,
-                nonce[msg.sender]++
+                args.author,
+                authorNonce[args.author]++
             )
         );
 
@@ -64,36 +79,29 @@ contract IPFT721 is ERC721, IERC2981 {
         require(hash == id, "IPFT(721): content hash mismatch");
 
         // Set codec.
-        codec[id] = codec_;
+        codec[id] = args.codec;
 
         // Set royalty.
-        royalty[id] = royalty_;
+        royalty[id] = args.royalty;
 
         // Mint the IPFT(721).
-        _mint(to, id);
+        _mint(args.to, id);
+
+        emit IPFT.Claim(msg.sender, args.author, id, args.codec);
     }
 
     /**
      * Batch version of {mint}. For a successive content,
-     * the according {nonce} value naturally increments.
+     * the according {authorNonce} value naturally increments.
      */
     function mintBatch(
-        address to,
         uint256[] calldata tokenIds,
         bytes[] calldata contents,
         uint32[] calldata tagOffsets,
-        uint32 codec_,
-        uint8 royalty_
+        MintArgs calldata args
     ) external {
         for (uint256 i = 0; i < tokenIds.length; i++) {
-            mint(
-                to,
-                tokenIds[i],
-                contents[i],
-                tagOffsets[i],
-                codec_,
-                royalty_
-            );
+            mint(tokenIds[i], contents[i], tagOffsets[i], args);
         }
     }
 

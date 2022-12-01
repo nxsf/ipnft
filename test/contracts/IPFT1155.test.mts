@@ -42,7 +42,14 @@ describe("IPFT(1155)", async () => {
       });
 
       after(async () => {
-        await ipft1155.claim(multihash.digest, content, 8, DagCbor.code, 10);
+        await ipft1155.claim(
+          w0.address,
+          multihash.digest,
+          content,
+          8,
+          DagCbor.code,
+          10
+        );
       });
     });
 
@@ -55,6 +62,7 @@ describe("IPFT(1155)", async () => {
 
         const totalSupplyBefore = await ipft1155.totalSupply(multihash.digest);
 
+        // TODO: Test `Claim` event.
         await ipft1155.mint(w0.address, multihash.digest, 10, false, []);
 
         expect(await ipft1155.balanceOf(w0.address, multihash.digest)).to.eq(
@@ -132,17 +140,16 @@ describe("IPFT(1155)", async () => {
 
       const totalSupplyBefore = await ipft1155.totalSupply(multihash1.digest);
 
-      await ipft1155.claimMint(
-        multihash1.digest,
-        content1,
-        8,
-        DagCbor.code,
-        10,
-        w1.address,
-        10,
-        false,
-        []
-      );
+      await ipft1155.claimMint(content1, [], {
+        author: w0.address,
+        id: multihash1.digest,
+        offset: 8,
+        codec: DagCbor.code,
+        royalty: 10,
+        to: w1.address,
+        amount: 10,
+        finalize: false,
+      });
 
       expect(await ipft1155.balanceOf(w1.address, multihash1.digest)).to.eq(
         w1BalanceBefore.add(10)

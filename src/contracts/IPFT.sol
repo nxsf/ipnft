@@ -6,15 +6,23 @@ import "./ToHexString.sol";
 library IPFT {
     using ToHexString for uint32;
 
+    /// Emitted when an IPFT authorship is claimed.
+    event Claim(
+        address operator,
+        address indexed author,
+        uint256 id,
+        uint32 codec
+    );
+
     /**
-     * Prove an IPFT ownership by proving that `content`
+     * Prove an IPFT authorship by proving that `content`
      * contains a nonced 80-byte IPFT tag at `offset`.
      *
      * At `offset` the following byte sequence is expected:
      *
-     * version           | blockchain id   | contract address | prover address | nonce
+     * version           | blockchain id   | contract address | author address | nonce
      * 4 bytes           | 32 bytes        | 20 bytes         | 20 bytes       | 4 bytes
-     * `0x65766d01` [^1] | `block.chainid` | `contractAddr`   | `prover`       | `nonce`
+     * `0x65766d01` [^1] | `block.chainid` | `contractAddr`   | `author`       | `nonce`
      *
      * [^1]: `0x65766d01` is the hex encoding of the ASCII string "evm\x01",
      * that is version 1 of the IPFT tag for the EVM.
@@ -25,7 +33,7 @@ library IPFT {
         bytes calldata content,
         uint32 offset,
         address contractAddr,
-        address prover,
+        address author,
         uint32 nonce
     ) internal view returns (bytes32 hash) {
         // Check the content length so that it may contain the tag.
@@ -49,10 +57,10 @@ library IPFT {
             "IPFT: invalid contract address"
         );
 
-        // Check the tag prover.
+        // Check the tag author.
         require(
-            _bytesToAddress(content, offset + 56) == prover,
-            "IPFT: invalid prover"
+            _bytesToAddress(content, offset + 56) == author,
+            "IPFT: invalid author"
         );
 
         // Check the tag nonce.
