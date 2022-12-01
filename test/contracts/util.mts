@@ -1,22 +1,26 @@
 import { ethers } from "ethers";
 
-export function ipftTag(
-  chainId: number,
-  contractAddress: string,
-  author: string,
-  nonce: number
-) {
-  const tag = Buffer.alloc(84);
+export class IPFTTag {
+  constructor(
+    public readonly chainId: number,
+    public readonly contract: string,
+    public readonly author: string,
+    public readonly nonce: number
+  ) {}
 
-  tag.writeUint32BE(0x69706674); // "ipft"
-  tag.writeUint8(0x01, 4); // version
-  tag.writeUint32BE(0x65766d00, 5); // "evm\0"
-  tag.write(chainId.toString(16).padStart(64, "0"), 8, 32, "hex");
-  tag.write(contractAddress.slice(2), 40, 20, "hex");
-  tag.write(author.slice(2), 60, 20, "hex");
-  tag.writeUInt32BE(nonce, 80);
+  toBytes(): Uint8Array {
+    const tag = Buffer.alloc(84);
 
-  return tag;
+    tag.writeUint32BE(0x69706674); // "ipft"
+    tag.writeUint8(0x01, 4); // version
+    tag.writeUint32BE(0x65766d00, 5); // "evm\0"
+    tag.write(this.chainId.toString(16).padStart(64, "0"), 8, 32, "hex");
+    tag.write(this.contract.slice(2), 40, 20, "hex");
+    tag.write(this.author.slice(2), 60, 20, "hex");
+    tag.writeUInt32BE(this.nonce, 80);
+
+    return tag;
+  }
 }
 
 export async function getChainId(

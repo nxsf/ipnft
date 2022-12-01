@@ -6,7 +6,7 @@ import { IpftRedeemable } from "../../waffle/types/IpftRedeemable";
 import * as DagCbor from "@ipld/dag-cbor";
 import { ByteView, CID, digest } from "multiformats";
 import { keccak256 } from "@multiformats/sha3";
-import { ipftTag, getChainId } from "./util.mjs";
+import { IPFTTag, getChainId } from "./util.mjs";
 import { addMonths } from "date-fns";
 import { BigNumber } from "ethers";
 
@@ -32,12 +32,12 @@ describe("IPFT(Redeemable)", async () => {
 
     content = DagCbor.encode({
       metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-      ipft: ipftTag(
+      ipft: new IPFTTag(
         await getChainId(provider),
         ipft1155Redeemable.address,
         w0.address,
         0
-      ),
+      ).toBytes(),
     });
 
     multihash = await keccak256.digest(content);
@@ -222,12 +222,12 @@ describe("IPFT(Redeemable)", async () => {
     it("works", async () => {
       let content1 = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipft: ipftTag(
+        ipft: new IPFTTag(
           await getChainId(provider),
           ipft1155Redeemable.address,
           w0.address,
           1
-        ),
+        ).toBytes(),
       });
 
       let multihash1 = await keccak256.digest(content1);

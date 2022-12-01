@@ -10,7 +10,7 @@ import { Ipft721 } from "../../waffle/types/Ipft721.js";
 import * as DagCbor from "@ipld/dag-cbor";
 import { keccak256 } from "@multiformats/sha3";
 import { CID } from "multiformats";
-import { ipftTag, getChainId } from "./util.mjs";
+import { IPFTTag, getChainId } from "./util.mjs";
 
 use(solidity);
 
@@ -30,12 +30,12 @@ describe("IPFT(721)", async () => {
     it("fails on invalid tag offset", async () => {
       const content = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipft: ipftTag(
+        ipft: new IPFTTag(
           await getChainId(provider),
           ipft721.address,
           w0.address,
           0
-        ),
+        ).toBytes(),
       });
 
       const multihash = await keccak256.digest(content);
@@ -58,12 +58,12 @@ describe("IPFT(721)", async () => {
     it("works", async () => {
       const content = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipft: ipftTag(
+        ipft: new IPFTTag(
           await getChainId(provider),
           ipft721.address,
           w0.address,
           0
-        ),
+        ).toBytes(),
       });
 
       const multihash = await keccak256.digest(content);
@@ -121,12 +121,12 @@ describe("IPFT(721)", async () => {
     it("works", async () => {
       const content = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipft: ipftTag(
+        ipft: new IPFTTag(
           await getChainId(provider),
           ipft721.address,
           w0.address,
           0
-        ),
+        ).toBytes(),
       });
 
       const multihash = await keccak256.digest(content);
