@@ -41,17 +41,13 @@ describe("IPFT(721)", async () => {
       const multihash = await keccak256.digest(content);
 
       await expect(
-        ipft721.mint(
-          multihash.digest,
+        ipft721.claimMint(multihash.digest, w0.address, {
+          author: w0.address,
           content,
-          9, // This
-          {
-            author: w0.address,
-            to: w0.address,
-            codec: DagCbor.code,
-            royalty: 0,
-          }
-        )
+          tagOffset: 9, // This
+          codec: DagCbor.code,
+          royalty: 10,
+        })
       ).to.be.revertedWith("IPFT: invalid magic bytes");
     });
 
@@ -68,18 +64,20 @@ describe("IPFT(721)", async () => {
 
       const multihash = await keccak256.digest(content);
 
-      // TODO: Test `Claim` event.
       expect(
-        await ipft721.mint(multihash.digest, content, 8, {
+        await ipft721.claimMint(multihash.digest, w0.address, {
           author: w0.address,
-          to: w0.address,
+          content,
+          tagOffset: 8,
           codec: DagCbor.code,
           royalty: 10,
         })
-      );
+      ).to.emit(ipft721, "Claim");
+      // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
 
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);
       expect(await ipft721.ownerOf(multihash.digest)).to.eq(w0.address);
+      expect(await ipft721.codec(multihash.digest)).to.eq(DagCbor.code);
       expect(await ipft721.authorNonce(w0.address)).to.eq(1);
 
       const royaltyInfo = await ipft721.royaltyInfo(
@@ -96,20 +94,21 @@ describe("IPFT(721)", async () => {
     it("disallows minting with the sames nonce", async () => {
       const content = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipft: ipftTag(
+        ipft: new IPFTTag(
           await getChainId(provider),
           ipft721.address,
           w0.address,
           0 // This
-        ),
+        ).toBytes(),
       });
 
       const multihash = await keccak256.digest(content);
 
       await expect(
-        ipft721.mint(multihash.digest, content, 8, {
+        ipft721.claimMint(multihash.digest, w0.address, {
           author: w0.address,
-          to: w0.address,
+          content,
+          tagOffset: 8,
           codec: DagCbor.code,
           royalty: 10,
         })

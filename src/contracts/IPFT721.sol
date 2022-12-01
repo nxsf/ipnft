@@ -13,11 +13,25 @@ import "./IPFT.sol";
  * An IPNFT(721) represents a digital copyright for an IPFS CID,
  * where a token ID is the 32-byte keccak256 digest part of it.
  *
- * To {mint} an IPFT(721) with a specific identifier, one must prove
- * the possession of the content containing a valid IPFT tag.
+ * To {claimMint} an IPFT(721) with a specific identifier, one must prove
+ * the authorship of the content containing a valid IPFT tag.
  */
 contract IPFT721 is ERC721, IERC2981 {
-    /// Emitted when an IPFT authorship is claimed.
+    /// Arguments for the claiming part of {claimMint} function.
+    struct ClaimArgs {
+        /// The to-become-token-author address.
+        address author;
+        ///  The file containing an IPFT tag.
+        bytes content;
+        /// The IPFT tag offset in bytes.
+        uint32 tagOffset;
+        /// The content codec (e.g. `0x71` for dag-cbor).
+        uint32 codec;
+        /// The token royalty, calculated as `royalty / 255`.
+        uint8 royalty;
+    }
+
+    /// Emitted when an IPFT authorship is {claimMint}ed.
     event Claim(
         address operator,
         address indexed author,
@@ -25,7 +39,7 @@ contract IPFT721 is ERC721, IERC2981 {
         uint32 codec
     );
 
-    /// Get a token author nonce, used in {mint}.
+    /// Get a token author nonce, used in {claimMint}.
     mapping(address => uint32) public authorNonce;
 
     /// Get a token content codec (e.g. 0x71 for dag-cbor).
@@ -36,36 +50,22 @@ contract IPFT721 is ERC721, IERC2981 {
 
     constructor() ERC721("IPFT721", "IPFT") {}
 
-    /// A struct to overcome the Solidity stack size limits.
-    struct MintArgs {
-        address author;
-        address to;
-        uint32 codec;
-        uint8 royalty;
-    }
-
     /**
      * Claim an IPFT(721) by proving its authorship (see {IPFT.verify}).
-     * Upon success, a brand-new IPFT is minted to `to`.
+     * Upon success, a brand-new IPFT is claimed to `to`.
      *
      * @notice The content shall have an ERC721 Metadata JSON file resolvable
      * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
      *
-     * @param id           The token id, also the keccak256 hash of `content`.
-     * @param content      The file containing an IPFT tag.
-     * @param tagOffset    The IPFT tag offset in bytes.
-     * @param args.author  The to-become-author address.
-     * @param args.to      The address to mint the token to.
-     * @param args.codec   The content codec (e.g. `0x71` for dag-cbor).
-     * @param args.royalty The token royalty, calculated as `royalty / 255`.
+     * @param id The token id, also the keccak256 hash of `content`.
+     * @param to The address to mint the token to.
      *
      * Emits {Claim}.
      */
-    function mint(
+    function claimMint(
         uint256 id,
-        bytes calldata content,
-        uint32 tagOffset,
-        MintArgs calldata args
+        address to,
+        ClaimArgs calldata args
     ) public {
         require(
             msg.sender == args.author ||
@@ -75,8 +75,8 @@ contract IPFT721 is ERC721, IERC2981 {
 
         uint256 hash = uint256(
             IPFT.verify(
-                content,
-                tagOffset,
+                args.content,
+                args.tagOffset,
                 address(this),
                 args.author,
                 authorNonce[args.author]++
@@ -93,24 +93,9 @@ contract IPFT721 is ERC721, IERC2981 {
         royalty[id] = args.royalty;
 
         // Mint the IPFT(721).
-        _mint(args.to, id);
+        _mint(to, id);
 
         emit Claim(msg.sender, args.author, id, args.codec);
-    }
-
-    /**
-     * Batch version of {mint}. For a successive content,
-     * the according {authorNonce} value naturally increments.
-     */
-    function mintBatch(
-        uint256[] calldata tokenIds,
-        bytes[] calldata contents,
-        uint32[] calldata tagOffsets,
-        MintArgs calldata args
-    ) external {
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            mint(tokenIds[i], contents[i], tagOffsets[i], args);
-        }
     }
 
     function supportsInterface(
