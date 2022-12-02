@@ -1,3 +1,9 @@
+# Interplanetary File Token
+
+## Deployment
+
+1. Run `npm run deploy -- --network <network>`.
+
 ## Development
 
 For testing, `waffle` is used along with `ethers`.
