@@ -14,21 +14,23 @@
     "deploy": "npx hardhat run script/deploy.js",
     "node": "npx hardhat node"
   },
+  "dependencies": {
+    "@nomiclabs/hardhat-waffle": "^2.0.3",
+    "@openzeppelin/contracts": "^4.7.3",
+    "dotenv": "^16.0.3",
+    "ethereum-waffle": "^3.4.4",
+    "hardhat": "^2.12.2"
+  },
   "devDependencies": {
     "@ipld/dag-cbor": "^8.0.0",
     "@multiformats/sha3": "^2.0.13",
     "@nomiclabs/hardhat-ethers": "^2.2.1",
-    "@nomiclabs/hardhat-waffle": "^2.0.3",
-    "@openzeppelin/contracts": "^4.7.3",
     "@types/chai": "^4.3.3",
     "@types/mocha": "^10.0.0",
     "@types/node": "^18.11.7",
     "chai": "^4.3.6",
     "date-fns": "^2.29.3",
-    "dotenv": "^16.0.3",
-    "ethereum-waffle": "^3.4.4",
     "ethers": "^5.7.2",
-    "hardhat": "^2.12.2",
     "mocha": "^10.1.0",
     "multiformats": "^10.0.2",
     "ts-node": "^10.9.1",
