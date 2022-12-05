@@ -57,7 +57,7 @@ library IPFT {
     }
 
     /**
-     * Return string `"http://f01[codec]1220{id}.ipfs"`,
+     * Return string `"http://f01[codec]1b20{id}.ipfs"`,
      * where `[codec]` is replaced automaticly with the actual token codec.
      *
      * ```
