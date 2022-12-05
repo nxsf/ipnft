@@ -11,7 +11,7 @@ import "./IPFT.sol";
 
 /**
  * @title Interplanetary File Token (Redeemable)
- * @author Fancy Software <fancysoft.eth>
+ * @author Onyx Software <nxsf.org>
  *
  * IPFT(Redeemable) is an ERC-1155-compliant IPFT
  * which can be redeemed by sending back to this contract.

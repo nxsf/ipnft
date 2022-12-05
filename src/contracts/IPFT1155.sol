@@ -10,7 +10,7 @@ import "./IPFT.sol";
 
 /**
  * @title Interplanetary File Token (1155)
- * @author Fancy Software <fancysoft.eth>
+ * @author Onyx Software <nxsf.org>
  *
  * IPFT(1155) is an ERC-1155-compliant IPFT.
  */
