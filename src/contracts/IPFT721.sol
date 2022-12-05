@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/utils/Multicall.sol";
 
 import "./IPFT.sol";
 
@@ -16,7 +17,7 @@ import "./IPFT.sol";
  * To {mint} an IPFT(721) with a specific identifier, one must prove
  * the authorship of the content containing a valid IPFT tag.
  */
-contract IPFT721 is ERC721, IERC2981 {
+contract IPFT721 is ERC721, IERC2981, Multicall {
     /// Emitted when an IPFT authorship is {mint}ed.
     event Mint(address operator, address indexed author, uint256 id);
 
