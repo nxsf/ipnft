@@ -11,7 +11,7 @@ import "./IPFT.sol";
 
 /**
  * @title Interplanetary File Token (1155)
- * @author Onyx Software <nxsf.org>
+ * @author Onyx Software Foundation <nxsf.org>
  *
  * IPFT(1155) is an ERC-1155-compliant Interplanetary File Token contract.
  * Prior to {mint}ing, the token authorship must be {claim}ed.

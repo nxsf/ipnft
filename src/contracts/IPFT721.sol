@@ -8,7 +8,7 @@ import "./IPFT.sol";
 
 /**
  * @title Interplanetary File Token (721)
- * @author Onyx Software <nxsf.org>
+ * @author Onyx Software Foundation <nxsf.org>
  *
  * An IPNFT(721) represents a digital copyright for an IPFS CID,
  * where a token ID is the 32-byte keccak256 digest part of it.
