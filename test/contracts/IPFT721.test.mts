@@ -40,7 +40,7 @@ describe("IPFT(721)", async () => {
       const multihash = await keccak256.digest(content);
 
       await expect(
-        ipft721.claimMint(multihash.digest, w0.address, {
+        ipft721.mint(multihash.digest, w0.address, {
           author: w0.address,
           content,
           tagOffset: 9, // This
@@ -63,14 +63,14 @@ describe("IPFT(721)", async () => {
       const multihash = await keccak256.digest(content);
 
       expect(
-        await ipft721.claimMint(multihash.digest, w0.address, {
+        await ipft721.mint(multihash.digest, w0.address, {
           author: w0.address,
           content,
           tagOffset: 8,
           codec: DagCbor.code,
           royalty: 10,
         })
-      ).to.emit(ipft721, "Claim");
+      ).to.emit(ipft721, "Mint");
       // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
 
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);

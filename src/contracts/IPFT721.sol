@@ -13,12 +13,12 @@ import "./IPFT.sol";
  * An IPNFT(721) represents a digital copyright for an IPFS CID,
  * where a token ID is the 32-byte keccak256 digest part of it.
  *
- * To {claimMint} an IPFT(721) with a specific identifier, one must prove
+ * To {mint} an IPFT(721) with a specific identifier, one must prove
  * the authorship of the content containing a valid IPFT tag.
  */
 contract IPFT721 is ERC721, IERC2981 {
-    /// Arguments for the claiming part of {claimMint} function.
-    struct ClaimArgs {
+    /// Arguments for the {mint} function.
+    struct MintArgs {
         /// The to-become-token-author address.
         address author;
         ///  The file containing an IPFT tag.
@@ -31,8 +31,8 @@ contract IPFT721 is ERC721, IERC2981 {
         uint8 royalty;
     }
 
-    /// Emitted when an IPFT authorship is {claimMint}ed.
-    event Claim(
+    /// Emitted when an IPFT authorship is {mint}ed.
+    event Mint(
         address operator,
         address indexed author,
         uint256 id,
@@ -48,8 +48,8 @@ contract IPFT721 is ERC721, IERC2981 {
     constructor() ERC721("IPFT721", "IPFT") {}
 
     /**
-     * Claim an IPFT(721) by proving its authorship (see {IPFT.verifyTag}).
-     * Upon success, a brand-new IPFT is claimed to `to`.
+     * Mint an IPFT(721) by proving its authorship (see {IPFT.verifyTag}).
+     * Upon success, a brand-new IPFT(721) is minted to `to`.
      *
      * @notice The content shall have an ERC721 Metadata JSON file resolvable
      * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
@@ -57,13 +57,9 @@ contract IPFT721 is ERC721, IERC2981 {
      * @param id The token id, also the keccak256 hash of `content`.
      * @param to The address to mint the token to.
      *
-     * Emits {Claim}.
+     * Emits {Mint}.
      */
-    function claimMint(
-        uint256 id,
-        address to,
-        ClaimArgs calldata args
-    ) public {
+    function mint(uint256 id, address to, MintArgs calldata args) public {
         require(
             msg.sender == args.author ||
                 isApprovedForAll(args.author, msg.sender),
@@ -91,7 +87,7 @@ contract IPFT721 is ERC721, IERC2981 {
         // Mint the IPFT(721).
         _mint(to, id);
 
-        emit Claim(msg.sender, args.author, id, args.codec);
+        emit Mint(msg.sender, args.author, id, args.codec);
     }
 
     function supportsInterface(
