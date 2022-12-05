@@ -17,20 +17,6 @@ import "./IPFT.sol";
  * the authorship of the content containing a valid IPFT tag.
  */
 contract IPFT721 is ERC721, IERC2981 {
-    /// Arguments for the {mint} function.
-    struct MintArgs {
-        /// The to-become IPFT {authorOf} address.
-        address author;
-        ///  The file containing an IPFT tag.
-        bytes content;
-        /// The IPFT tag offset in bytes.
-        uint32 tagOffset;
-        /// The content codec (e.g. `0x71` for dag-cbor).
-        uint32 codec;
-        /// The token royalty, calculated as `royalty / 255`.
-        uint8 royalty;
-    }
-
     /// Emitted when an IPFT authorship is {mint}ed.
     event Mint(address operator, address indexed author, uint256 id);
 
@@ -52,43 +38,50 @@ contract IPFT721 is ERC721, IERC2981 {
      * @notice The content shall have an ERC721 Metadata JSON file resolvable
      * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
      *
-     * @param id The token id, also the keccak256 hash of `content`.
-     * @param to The address to mint the token to.
+     * @param id        The token id, also the keccak256 hash of `content`.
+     * @param author    The to-become IPFT {authorOf} address.
+     * @param content   The file containing an IPFT tag.
+     * @param tagOffset The IPFT tag offset in bytes.
+     * @param codec_    The content codec (e.g. `0x71` for dag-cbor).
+     * @param royalty_  The token royalty, calculated as `royalty / 255`.
+     * @param to        The address to mint the token to.
      *
      * Emits {Mint}.
      */
-    function mint(uint256 id, address to, MintArgs calldata args) public {
+    function mint(
+        uint256 id,
+        address author,
+        bytes calldata content,
+        uint32 tagOffset,
+        uint32 codec_,
+        uint8 royalty_,
+        address to
+    ) public {
         require(
-            msg.sender == args.author ||
-                isApprovedForAll(args.author, msg.sender),
+            msg.sender == author || isApprovedForAll(author, msg.sender),
             "IPFT(721): unauthorized"
         );
 
         uint256 hash = uint256(
-            IPFT.verifyTag(
-                args.content,
-                args.tagOffset,
-                address(this),
-                args.author
-            )
+            IPFT.verifyTag(content, tagOffset, address(this), author)
         );
 
         // Check the content hash against the token ID.
         require(hash == id, "IPFT(721): content hash mismatch");
 
         // Set author.
-        authorOf[id] = args.author;
+        authorOf[id] = author;
 
         // Set codec.
-        codec[id] = args.codec;
+        codec[id] = codec_;
 
         // Set royalty.
-        royalty[id] = args.royalty;
+        royalty[id] = royalty_;
 
         // Mint the IPFT(721).
         _mint(to, id);
 
-        emit Mint(msg.sender, args.author, id);
+        emit Mint(msg.sender, author, id);
     }
 
     function supportsInterface(

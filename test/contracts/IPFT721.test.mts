@@ -40,13 +40,15 @@ describe("IPFT(721)", async () => {
       const multihash = await keccak256.digest(content);
 
       await expect(
-        ipft721.mint(multihash.digest, w0.address, {
-          author: w0.address,
+        ipft721.mint(
+          multihash.digest,
+          w0.address,
           content,
-          tagOffset: 9, // This
-          codec: DagCbor.code,
-          royalty: 10,
-        })
+          9, // This
+          DagCbor.code,
+          10,
+          w0.address
+        )
       ).to.be.revertedWith("IPFT: invalid magic bytes");
     });
 
@@ -63,13 +65,15 @@ describe("IPFT(721)", async () => {
       const multihash = await keccak256.digest(content);
 
       expect(
-        await ipft721.mint(multihash.digest, w0.address, {
-          author: w0.address,
+        await ipft721.mint(
+          multihash.digest,
+          w0.address,
           content,
-          tagOffset: 8,
-          codec: DagCbor.code,
-          royalty: 10,
-        })
+          8,
+          DagCbor.code,
+          10,
+          w0.address
+        )
       ).to.emit(ipft721, "Mint");
       // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
 
