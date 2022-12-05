@@ -40,9 +40,6 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
     /// Get a token author, if any.
     mapping(uint256 => address) public author;
 
-    /// Get a token author nonce, used in {claim}.
-    mapping(address => uint32) public authorNonce;
-
     /// Get a token content codec (e.g. 0x71 for dag-cbor).
     mapping(uint256 => uint32) public codec;
 
@@ -57,7 +54,7 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
     /**
      * Claim an IPFT ownership by verifying that `content`
      * contains a valid IPFT tag at `offset`.
-     * See {IPFT.verify} for more details.
+     * See {IPFT.verifyTag} for more details.
      * Once claimed, the token may be {mint}ed.
      * Emits {Claim}.
      */
@@ -70,12 +67,11 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
 
         require(author[id] == address(0), "IPFT(1155): already claimed");
 
-        bytes32 hash = IPFT.verify(
+        bytes32 hash = IPFT.verifyTag(
             args.content,
             args.tagOffset,
             address(this),
-            args.author,
-            authorNonce[args.author]++
+            args.author
         );
 
         require(uint256(hash) == id, "IPFT(1155): hash mismatch");

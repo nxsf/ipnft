@@ -4,20 +4,17 @@ export class IPFTTag {
   constructor(
     public readonly chainId: number,
     public readonly contract: string,
-    public readonly author: string,
-    public readonly nonce: number
+    public readonly author: string
   ) {}
 
   toBytes(): Uint8Array {
-    const tag = Buffer.alloc(84);
+    const tag = Buffer.alloc(56);
 
     tag.writeUint32BE(0x69706674); // "ipft"
-    tag.writeUint8(0x01, 4); // version
-    tag.writeUint32BE(0x65766d00, 5); // "evm\0"
-    tag.write(this.chainId.toString(16).padStart(64, "0"), 8, 32, "hex");
-    tag.write(this.contract.slice(2), 40, 20, "hex");
-    tag.write(this.author.slice(2), 60, 20, "hex");
-    tag.writeUInt32BE(this.nonce, 80);
+    tag.writeUint32BE(0x0165766d, 4); // "\x{01}evm"
+    tag.write(this.chainId.toString(16).padStart(16, "0"), 8, 8, "hex");
+    tag.write(this.contract.slice(2), 16, 20, "hex");
+    tag.write(this.author.slice(2), 36, 20, "hex");
 
     return tag;
   }

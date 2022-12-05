@@ -33,8 +33,7 @@ describe("IPFT(721)", async () => {
         ipft: new IPFTTag(
           await getChainId(provider),
           ipft721.address,
-          w0.address,
-          0
+          w0.address
         ).toBytes(),
       });
 
@@ -57,8 +56,7 @@ describe("IPFT(721)", async () => {
         ipft: new IPFTTag(
           await getChainId(provider),
           ipft721.address,
-          w0.address,
-          0
+          w0.address
         ).toBytes(),
       });
 
@@ -78,7 +76,6 @@ describe("IPFT(721)", async () => {
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);
       expect(await ipft721.ownerOf(multihash.digest)).to.eq(w0.address);
       expect(await ipft721.codec(multihash.digest)).to.eq(DagCbor.code);
-      expect(await ipft721.authorNonce(w0.address)).to.eq(1);
 
       const royaltyInfo = await ipft721.royaltyInfo(
         multihash.digest,
@@ -90,30 +87,6 @@ describe("IPFT(721)", async () => {
         ethers.utils.parseEther("0.039215686274509803")
       );
     });
-
-    it("disallows minting with the sames nonce", async () => {
-      const content = DagCbor.encode({
-        metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipft: new IPFTTag(
-          await getChainId(provider),
-          ipft721.address,
-          w0.address,
-          0 // This
-        ).toBytes(),
-      });
-
-      const multihash = await keccak256.digest(content);
-
-      await expect(
-        ipft721.claimMint(multihash.digest, w0.address, {
-          author: w0.address,
-          content,
-          tagOffset: 8,
-          codec: DagCbor.code,
-          royalty: 10,
-        })
-      ).to.be.revertedWith("IPFT: invalid nonce");
-    });
   });
 
   describe("uri", () => {
@@ -123,8 +96,7 @@ describe("IPFT(721)", async () => {
         ipft: new IPFTTag(
           await getChainId(provider),
           ipft721.address,
-          w0.address,
-          0
+          w0.address
         ).toBytes(),
       });
 

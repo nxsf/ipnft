@@ -35,8 +35,7 @@ describe("IPFT(Redeemable)", async () => {
       ipft: new IPFTTag(
         await getChainId(provider),
         ipft1155Redeemable.address,
-        w0.address,
-        0
+        w0.address
       ).toBytes(),
     });
 
@@ -221,12 +220,11 @@ describe("IPFT(Redeemable)", async () => {
   describe("claim-minting", () => {
     it("works", async () => {
       let content1 = DagCbor.encode({
-        metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
+        metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L5"),
         ipft: new IPFTTag(
           await getChainId(provider),
           ipft1155Redeemable.address,
-          w0.address,
-          1
+          w0.address
         ).toBytes(),
       });
 

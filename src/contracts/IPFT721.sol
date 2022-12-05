@@ -39,9 +39,6 @@ contract IPFT721 is ERC721, IERC2981 {
         uint32 codec
     );
 
-    /// Get a token author nonce, used in {claimMint}.
-    mapping(address => uint32) public authorNonce;
-
     /// Get a token content codec (e.g. 0x71 for dag-cbor).
     mapping(uint256 => uint32) public codec;
 
@@ -51,7 +48,7 @@ contract IPFT721 is ERC721, IERC2981 {
     constructor() ERC721("IPFT721", "IPFT") {}
 
     /**
-     * Claim an IPFT(721) by proving its authorship (see {IPFT.verify}).
+     * Claim an IPFT(721) by proving its authorship (see {IPFT.verifyTag}).
      * Upon success, a brand-new IPFT is claimed to `to`.
      *
      * @notice The content shall have an ERC721 Metadata JSON file resolvable
@@ -74,12 +71,11 @@ contract IPFT721 is ERC721, IERC2981 {
         );
 
         uint256 hash = uint256(
-            IPFT.verify(
+            IPFT.verifyTag(
                 args.content,
                 args.tagOffset,
                 address(this),
-                args.author,
-                authorNonce[args.author]++
+                args.author
             )
         );
 
