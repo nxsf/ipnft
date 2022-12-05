@@ -32,12 +32,7 @@ contract IPFT721 is ERC721, IERC2981 {
     }
 
     /// Emitted when an IPFT authorship is {mint}ed.
-    event Mint(
-        address operator,
-        address indexed author,
-        uint256 id,
-        uint32 codec
-    );
+    event Mint(address operator, address indexed author, uint256 id);
 
     /// Get an IPFT author.
     mapping(uint256 => address) public authorOf;
@@ -93,7 +88,7 @@ contract IPFT721 is ERC721, IERC2981 {
         // Mint the IPFT(721).
         _mint(to, id);
 
-        emit Mint(msg.sender, args.author, id, args.codec);
+        emit Mint(msg.sender, args.author, id);
     }
 
     function supportsInterface(

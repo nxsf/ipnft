@@ -31,12 +31,7 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
     }
 
     /// Emitted when an IPFT authorship is claimed.
-    event Claim(
-        address operator,
-        address indexed author,
-        uint256 id,
-        uint32 codec
-    );
+    event Claim(address operator, address indexed author, uint256 id);
 
     /// Get a token author, if any.
     mapping(uint256 => address) public author;
@@ -81,7 +76,7 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
         codec[id] = args.codec;
         royalty[id] = args.royalty;
 
-        emit Claim(msg.sender, args.author, id, args.codec);
+        emit Claim(msg.sender, args.author, id);
     }
 
     /**

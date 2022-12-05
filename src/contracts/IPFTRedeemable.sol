@@ -39,12 +39,7 @@ contract IPFTRedeemable is
     }
 
     /// Emitted when an IPFT authorship is {claim}ed.
-    event Claim(
-        address operator,
-        address indexed author,
-        uint256 id,
-        uint32 codec
-    );
+    event Claim(address operator, address indexed author, uint256 id);
 
     /// Get a token author, if any.
     mapping(uint256 => address) public author;
@@ -92,7 +87,7 @@ contract IPFTRedeemable is
         codec[id] = args.codec;
         royalty[id] = args.royalty;
 
-        emit Claim(msg.sender, args.author, id, args.codec);
+        emit Claim(msg.sender, args.author, id);
     }
 
     /**
