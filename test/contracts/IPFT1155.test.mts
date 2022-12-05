@@ -7,6 +7,7 @@ import * as DagCbor from "@ipld/dag-cbor";
 import { ByteView, CID, digest } from "multiformats";
 import { keccak256 } from "@multiformats/sha3";
 import { IPFTTag, getChainId } from "./util.mjs";
+import { ethers } from "ethers";
 
 use(solidity);
 
@@ -46,13 +47,14 @@ describe("IPFT(1155)", async () => {
 
       after(async () => {
         expect(
-          await ipft1155.claim(multihash.digest, {
-            author: w0.address,
-            tagOffset: 8,
-            codec: DagCbor.code,
-            royalty: 10,
+          await ipft1155.claim(
+            multihash.digest,
+            w0.address,
             content,
-          })
+            8,
+            DagCbor.code,
+            10
+          )
         ).to.emit(ipft1155, "Claim");
         // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
       });
@@ -123,7 +125,7 @@ describe("IPFT(1155)", async () => {
     });
   });
 
-  describe("claim-minting", () => {
+  describe("claim & minting", () => {
     it("works", async () => {
       let content1 = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L5"),
@@ -143,20 +145,25 @@ describe("IPFT(1155)", async () => {
 
       const totalSupplyBefore = await ipft1155.totalSupply(multihash1.digest);
 
-      await ipft1155.claimMint(
-        multihash1.digest,
-        {
-          author: w0.address,
-          tagOffset: 8,
-          codec: DagCbor.code,
-          royalty: 10,
-          content: content1,
-        },
-        w1.address,
-        10,
-        false,
-        []
-      );
+      const iface = new ethers.utils.Interface(Ipft1155ABI.abi);
+
+      await ipft1155.multicall([
+        iface.encodeFunctionData("claim", [
+          multihash1.digest,
+          w0.address,
+          content1,
+          8,
+          DagCbor.code,
+          10,
+        ]),
+        iface.encodeFunctionData("mint", [
+          w1.address,
+          multihash1.digest,
+          10,
+          false,
+          [],
+        ]),
+      ]);
 
       expect(await ipft1155.balanceOf(w1.address, multihash1.digest)).to.eq(
         w1BalanceBefore.add(10)

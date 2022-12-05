@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/utils/Multicall.sol";
 
 import "./IPFT.sol";
 
@@ -15,21 +16,13 @@ import "./IPFT.sol";
  * IPFT(1155) is an ERC-1155-compliant Interplanetary File Token contract.
  * Prior to {mint}ing, the token authorship must be {claim}ed.
  */
-contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
-    /// Arguments for the {claim} function.
-    struct ClaimArgs {
-        /// The to-become-token-author address.
-        address author;
-        ///  The file containing an IPFT tag.
-        bytes content;
-        /// The IPFT tag offset in bytes.
-        uint32 tagOffset;
-        /// The content codec (e.g. `0x71` for dag-cbor).
-        uint32 codec;
-        /// The token royalty, calculated as `royalty / 255`.
-        uint8 royalty;
-    }
-
+contract IPFT1155 is
+    ERC1155,
+    ERC1155Burnable,
+    ERC1155Supply,
+    IERC2981,
+    Multicall
+{
     /// Emitted when an IPFT authorship is claimed.
     event Claim(address operator, address indexed author, uint256 id);
 
@@ -53,30 +46,43 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
      * See {IPFT.verifyTag} for more details.
      * Once claimed, the token may be {mint}ed.
      * Emits {Claim}.
+     *
+     * @param id        The token ID, also the keccak256 hash of `content`.
+     * @param author_   The to-become-token-author address.
+     * @param content   The file containing an IPFT tag.
+     * @param tagOffset The IPFT tag offset in bytes.
+     * @param codec_    The content codec (e.g. `0x71` for dag-cbor).
+     * @param royalty_  The token royalty, calculated as `royalty / 255`.
      */
-    function claim(uint256 id, ClaimArgs calldata args) public {
+    function claim(
+        uint256 id,
+        address author_,
+        bytes calldata content,
+        uint32 tagOffset,
+        uint32 codec_,
+        uint8 royalty_
+    ) public {
         require(
-            msg.sender == args.author ||
-                isApprovedForAll(args.author, msg.sender),
+            msg.sender == author_ || isApprovedForAll(author_, msg.sender),
             "IPFT(1155): unauthorized"
         );
 
         require(author[id] == address(0), "IPFT(1155): already claimed");
 
         bytes32 hash = IPFT.verifyTag(
-            args.content,
-            args.tagOffset,
+            content,
+            tagOffset,
             address(this),
-            args.author
+            author_
         );
 
         require(uint256(hash) == id, "IPFT(1155): hash mismatch");
 
-        author[id] = args.author;
-        codec[id] = args.codec;
-        royalty[id] = args.royalty;
+        author[id] = author_;
+        codec[id] = codec_;
+        royalty[id] = royalty_;
 
-        emit Claim(msg.sender, args.author, id);
+        emit Claim(msg.sender, author_, id);
     }
 
     /**
@@ -101,21 +107,6 @@ contract IPFT1155 is ERC1155, ERC1155Burnable, ERC1155Supply, IERC2981 {
         isFinalized[id] = finalize;
 
         _mint(to, id, amount, data);
-    }
-
-    /**
-     * {claim}, then {mint} in a single transaction.
-     */
-    function claimMint(
-        uint256 id,
-        ClaimArgs calldata claimArgs,
-        address to,
-        uint256 amount,
-        bool finalize,
-        bytes calldata data
-    ) public {
-        claim(id, claimArgs);
-        mint(to, id, amount, finalize, data);
     }
 
     /**
