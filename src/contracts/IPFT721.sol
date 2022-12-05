@@ -19,7 +19,7 @@ import "./IPFT.sol";
 contract IPFT721 is ERC721, IERC2981 {
     /// Arguments for the {mint} function.
     struct MintArgs {
-        /// The to-become-token-author address.
+        /// The to-become IPFT {authorOf} address.
         address author;
         ///  The file containing an IPFT tag.
         bytes content;
@@ -39,7 +39,10 @@ contract IPFT721 is ERC721, IERC2981 {
         uint32 codec
     );
 
-    /// Get a token content codec (e.g. 0x71 for dag-cbor).
+    /// Get an IPFT author.
+    mapping(uint256 => address) public authorOf;
+
+    /// Get an IPFT content codec (e.g. 0x71 for dag-cbor).
     mapping(uint256 => uint32) public codec;
 
     /// Get a token royalty, which is calculated as `royalty / 255`.
@@ -77,6 +80,9 @@ contract IPFT721 is ERC721, IERC2981 {
 
         // Check the content hash against the token ID.
         require(hash == id, "IPFT(721): content hash mismatch");
+
+        // Set author.
+        authorOf[id] = args.author;
 
         // Set codec.
         codec[id] = args.codec;

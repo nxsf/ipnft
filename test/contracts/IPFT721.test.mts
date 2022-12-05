@@ -74,6 +74,7 @@ describe("IPFT(721)", async () => {
       // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
 
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);
+      expect(await ipft721.authorOf(multihash.digest)).to.eq(w0.address);
       expect(await ipft721.ownerOf(multihash.digest)).to.eq(w0.address);
       expect(await ipft721.codec(multihash.digest)).to.eq(DagCbor.code);
 
