@@ -8,7 +8,7 @@ import { ByteView, CID, digest } from "multiformats";
 import { keccak256 } from "@multiformats/sha3";
 import { IPFTTag, getChainId } from "./util.mjs";
 import { addMonths } from "date-fns";
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 
 use(solidity);
 
@@ -59,13 +59,14 @@ describe("IPFT(Redeemable)", async () => {
 
       after(async () => {
         expect(
-          await ipft1155Redeemable.claim(multihash.digest, {
-            author: w0.address,
-            tagOffset: 8,
-            codec: DagCbor.code,
-            royalty: 10,
+          await ipft1155Redeemable.claim(
+            multihash.digest,
+            w0.address,
             content,
-          })
+            8,
+            DagCbor.code,
+            10
+          )
         ).to.emit(ipft1155Redeemable, "Claim");
         // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
       });
@@ -217,7 +218,7 @@ describe("IPFT(Redeemable)", async () => {
     });
   });
 
-  describe("claim-minting", () => {
+  describe("claim & minting", () => {
     it("works", async () => {
       let content1 = DagCbor.encode({
         metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L5"),
@@ -239,21 +240,26 @@ describe("IPFT(Redeemable)", async () => {
         multihash1.digest
       );
 
-      await ipft1155Redeemable.claimMint(
-        multihash1.digest,
-        {
-          author: w0.address,
-          tagOffset: 8,
-          codec: DagCbor.code,
-          royalty: 10,
-          content: content1,
-        },
-        w1.address,
-        10,
-        false,
-        Math.round(addMonths(new Date(), 2).valueOf() / 1000),
-        []
-      );
+      const iface = new ethers.utils.Interface(IpftRedeemableABI.abi);
+
+      await ipft1155Redeemable.multicall([
+        iface.encodeFunctionData("claim", [
+          multihash1.digest,
+          w0.address,
+          content1,
+          8,
+          DagCbor.code,
+          10,
+        ]),
+        iface.encodeFunctionData("mint", [
+          w1.address,
+          multihash1.digest,
+          10,
+          false,
+          Math.round(addMonths(new Date(), 2).valueOf() / 1000),
+          [],
+        ]),
+      ]);
 
       expect(
         await ipft1155Redeemable.balanceOf(w1.address, multihash1.digest)
