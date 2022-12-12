@@ -4,8 +4,8 @@
 import { expect, use } from "chai";
 import { ethers } from "ethers";
 import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
-import IpftABI from "../../waffle/IPFT.json";
-import Ipft721ABI from "../../waffle/IPFT721.json";
+import IpftABI from "../../waffle/IPFT.json" assert { type: "json" };
+import Ipft721ABI from "../../waffle/IPFT721.json" assert { type: "json" };
 import { Ipft721 } from "../../waffle/types/Ipft721.js";
 import * as DagCbor from "@ipld/dag-cbor";
 import { keccak256 } from "@multiformats/sha3";

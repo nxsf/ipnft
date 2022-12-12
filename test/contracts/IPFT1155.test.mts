@@ -1,7 +1,7 @@
 import { expect, use } from "chai";
 import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
-import IpftABI from "../../waffle/IPFT.json";
-import Ipft1155ABI from "../../waffle/IPFT1155.json";
+import IpftABI from "../../waffle/IPFT.json" assert { type: "json" };
+import Ipft1155ABI from "../../waffle/IPFT1155.json" assert { type: "json" };
 import { Ipft1155 } from "../../waffle/types/Ipft1155";
 import * as DagCbor from "@ipld/dag-cbor";
 import { ByteView, CID, digest } from "multiformats";
