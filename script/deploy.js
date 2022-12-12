@@ -22,6 +22,7 @@ async function deploy(contractName, deployOptions = {}, ...args) {
   const instance = await factory.deploy(...args);
   await instance.deployed();
   console.log(contractName, "deployed to", instance.address);
+  console.log("Transaction hash:", instance.deployTransaction.hash);
 
   return instance;
 }
