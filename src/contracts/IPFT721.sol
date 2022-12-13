@@ -2,8 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/interfaces/IERC2981.sol";
-import "@openzeppelin/contracts/utils/Multicall.sol";
 
 import "./IPFT.sol";
 
@@ -11,86 +9,38 @@ import "./IPFT.sol";
  * @title Interplanetary File Token (721)
  * @author Onyx Software Foundation <nxsf.org>
  *
- * An IPNFT(721) represents a digital copyright for an IPFS CID,
+ * An IPFT721 represents a ERC721-compliant digital copyright for an IPFS CID,
  * where a token ID is the 32-byte keccak256 digest part of it.
  *
- * To {mint} an IPFT(721) with a specific identifier, one must prove
+ * To {_mint} an IPFT721 with a specific identifier, one must prove
  * the authorship of the content containing a valid IPFT tag.
  */
-contract IPFT721 is ERC721, IERC2981, Multicall {
-    /// Emitted when an IPFT authorship is {mint}ed.
-    event Mint(address operator, address indexed author, uint256 id);
+contract IPFT721 is ERC721 {
+    /// An IPFT author.
+    mapping(uint256 => address) _author;
 
-    /// Get an IPFT author.
-    mapping(uint256 => address) public authorOf;
+    /// An IPFT content codec (e.g. 0x71 for dag-cbor).
+    mapping(uint256 => uint32) _codec;
 
-    /// Get an IPFT content codec (e.g. 0x71 for dag-cbor).
-    mapping(uint256 => uint32) public codec;
-
-    /// Get a token royalty, which is calculated as `royalty / 255`.
-    mapping(uint256 => uint8) public royalty;
-
-    constructor() ERC721("IPFT721", "IPFT") {}
+    constructor(
+        string memory name,
+        string memory symbol
+    ) ERC721(name, symbol) {}
 
     /**
-     * Mint an IPFT(721) by proving its authorship (see {IPFT.verifyTag}).
-     * Upon success, a brand-new IPFT(721) is minted to `to`.
-     *
-     * @notice The content shall have an ERC721 Metadata JSON file resolvable
-     * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
-     *
-     * @param id        The token id, also the keccak256 hash of `content`.
-     * @param author    The to-become IPFT {authorOf} address.
-     * @param content   The file containing an IPFT tag.
-     * @param tagOffset The IPFT tag offset in bytes.
-     * @param codec_    The content codec (e.g. `0x71` for dag-cbor).
-     * @param royalty_  The token royalty, calculated as `royalty / 255`.
-     * @param to        The address to mint the token to.
-     *
-     * Emits {Mint}.
+     * Get an IPFT author.
      */
-    function mint(
-        uint256 id,
-        address author,
-        bytes calldata content,
-        uint32 tagOffset,
-        uint32 codec_,
-        uint8 royalty_,
-        address to
-    ) public {
-        require(
-            msg.sender == author || isApprovedForAll(author, msg.sender),
-            "IPFT(721): unauthorized"
-        );
-
-        uint256 hash = uint256(
-            IPFT.verifyTag(content, tagOffset, address(this), author)
-        );
-
-        // Check the content hash against the token ID.
-        require(hash == id, "IPFT(721): content hash mismatch");
-
-        // Set author.
-        authorOf[id] = author;
-
-        // Set codec.
-        codec[id] = codec_;
-
-        // Set royalty.
-        royalty[id] = royalty_;
-
-        // Mint the IPFT(721).
-        _mint(to, id);
-
-        emit Mint(msg.sender, author, id);
+    function authorOf(uint256 tokenId) public view returns (address) {
+        return _author[tokenId];
     }
 
-    function supportsInterface(
-        bytes4 interfaceId
-    ) public view override(ERC721, IERC165) returns (bool) {
-        return
-            interfaceId == type(IERC2981).interfaceId ||
-            super.supportsInterface(interfaceId);
+    /**
+     * Get an IPFT multicodec[^1] value.
+     *
+     * [^1]: https://github.com/multiformats/multicodec
+     */
+    function codecOf(uint256 tokenId) public view returns (uint32) {
+        return _codec[tokenId];
     }
 
     /**
@@ -99,24 +49,50 @@ contract IPFT721 is ERC721, IERC2981, Multicall {
     function tokenURI(
         uint256 tokenId
     ) public view override(ERC721) returns (string memory) {
-        return string.concat(IPFT.uri(codec[tokenId]), "/metadata.json");
+        return string.concat(IPFT.uri(_codec[tokenId]), "/metadata.json");
     }
 
     /**
-     * See {IERC2981-royaltyInfo}.
+     * Mint an IPFT721 by proving its authorship (see {IPFT.verifyTag}).
+     * Upon success, a brand-new IPFT721 is minted to `to`.
+     *
+     * @notice The content shall have an ERC721 Metadata JSON file resolvable
+     * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
+     *
+     * @param to        The address to mint the token to.
+     * @param id        The token id, also the keccak256 hash of `content`.
+     * @param content   The file containing an IPFT tag.
+     * @param codec     The content codec (e.g. `0x71` for dag-cbor).
+     * @param tagOffset The IPFT tag offset in bytes.
+     * @param author    The to-become-token-author address.
      */
-    function royaltyInfo(
-        uint256 tokenId,
-        uint256 salePrice
-    )
-        external
-        view
-        override(IERC2981)
-        returns (address receiver, uint256 royaltyAmount)
-    {
-        return (
-            ownerOf(tokenId),
-            (salePrice * royalty[tokenId]) / type(uint8).max
+    function _mint(
+        address to,
+        uint256 id,
+        bytes calldata content,
+        uint32 codec,
+        uint32 tagOffset,
+        address author
+    ) internal {
+        require(
+            msg.sender == author || isApprovedForAll(author, msg.sender),
+            "IPFT721: unauthorized"
         );
+
+        uint256 hash = uint256(
+            IPFT.verifyTag(content, tagOffset, address(this), author)
+        );
+
+        // Check the content hash against the token ID.
+        require(hash == id, "IPFT721: content hash mismatch");
+
+        // Set author.
+        _author[id] = author;
+
+        // Set codec.
+        _codec[id] = codec;
+
+        // Mint the IPFT721.
+        _mint(to, id);
     }
 }

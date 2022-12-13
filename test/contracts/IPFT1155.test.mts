@@ -1,82 +1,72 @@
 import { expect, use } from "chai";
 import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
 import IpftABI from "../../waffle/IPFT.json" assert { type: "json" };
-import Ipft1155ABI from "../../waffle/IPFT1155.json" assert { type: "json" };
-import { Ipft1155 } from "../../waffle/types/Ipft1155";
+import Ipft1155ImplABI from "../../waffle/IPFT1155Impl.json" assert { type: "json" };
+import { Ipft1155Impl } from "../../waffle/types/Ipft1155Impl";
+import { contentBlock } from "./util.mjs";
+import { BlockView } from "multiformats/block/interface";
 import * as DagCbor from "@ipld/dag-cbor";
-import { ByteView, CID, digest } from "multiformats";
-import { keccak256 } from "@multiformats/sha3";
-import { IPFTTag, getChainId } from "./util.mjs";
-import { ethers } from "ethers";
 
 use(solidity);
 
-describe("IPFT(1155)", async () => {
+describe("IPFT1155", async () => {
   const provider = new MockProvider();
   const [w0, w1, w2] = provider.getWallets();
 
-  let ipft1155: Ipft1155;
-  let content: ByteView<any>;
-  let multihash: digest.Digest<27, number>;
+  let chainId: number;
+  let ipft1155: Ipft1155Impl;
+
+  let block: BlockView;
+  let id: Uint8Array;
+  let tagOffset: number;
 
   before(async () => {
+    // FIXME: chainId = (await provider.getNetwork()).chainId;
+    chainId = 1;
+
     const ipft = await deployContract(w0, IpftABI, []);
-    link(Ipft1155ABI, "src/contracts/IPFT.sol:IPFT", ipft.address);
+    link(Ipft1155ImplABI, "src/contracts/IPFT.sol:IPFT", ipft.address);
 
-    ipft1155 = (await deployContract(w0, Ipft1155ABI)) as Ipft1155;
+    ipft1155 = (await deployContract(w0, Ipft1155ImplABI)) as Ipft1155Impl;
 
-    content = DagCbor.encode({
-      metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-      ipft: new IPFTTag(
-        await getChainId(provider),
-        ipft1155.address,
-        w0.address
-      ).toBytes(),
-    });
+    const res = await contentBlock(chainId, ipft1155.address, w0.address);
 
-    multihash = await keccak256.digest(content);
+    block = res.block;
+    id = block.cid.multihash.digest;
+    tagOffset = res.tagOffset;
   });
 
   describe("minting", () => {
     describe("without claiming", () => {
       it("fails", async () => {
-        await expect(
-          ipft1155.mint(w0.address, multihash.digest, 10, false, [])
-        ).to.be.revertedWith("IPFT(1155): unauthorized");
+        await expect(ipft1155.mint(w0.address, id, 10, [])).to.be.revertedWith(
+          "IPFT1155: unauthorized"
+        );
       });
 
       after(async () => {
-        expect(
-          await ipft1155.claim(
-            multihash.digest,
-            w0.address,
-            content,
-            8,
-            DagCbor.code,
-            10
-          )
-        ).to.emit(ipft1155, "Claim");
-        // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
+        await ipft1155.claim(
+          id,
+          block.bytes,
+          block.cid.code,
+          tagOffset,
+          w0.address
+        );
       });
     });
 
     describe("when claimed", () => {
       it("works", async () => {
-        const w0BalanceBefore = await ipft1155.balanceOf(
-          w0.address,
-          multihash.digest
-        );
-
-        const totalSupplyBefore = await ipft1155.totalSupply(multihash.digest);
-
-        await ipft1155.mint(w0.address, multihash.digest, 10, false, []);
-
-        expect(await ipft1155.balanceOf(w0.address, multihash.digest)).to.eq(
+        const w0BalanceBefore = await ipft1155.balanceOf(w0.address, id);
+        await ipft1155.mint(w0.address, id, 10, []);
+        expect(await ipft1155.balanceOf(w0.address, id)).to.eq(
           w0BalanceBefore.add(10)
         );
 
-        expect(await ipft1155.totalSupply(multihash.digest)).to.equal(
-          totalSupplyBefore.add(10)
+        expect(await ipft1155.authorOf(id)).to.eq(w0.address);
+        expect(await ipft1155.codecOf(id)).to.eq(DagCbor.code);
+        expect(await ipft1155.uri(id)).to.eq(
+          "http://f01711b20{id}.ipfs/metadata.json"
         );
       });
     });
@@ -84,8 +74,8 @@ describe("IPFT(1155)", async () => {
     describe("when not the owner", () => {
       it("fails", async () => {
         await expect(
-          ipft1155.connect(w1).mint(w1.address, multihash.digest, 10, false, [])
-        ).to.be.revertedWith("IPFT(1155): unauthorized");
+          ipft1155.connect(w1).mint(w1.address, id, 10, [])
+        ).to.be.revertedWith("IPFT1155: unauthorized");
       });
     });
 
@@ -95,83 +85,12 @@ describe("IPFT(1155)", async () => {
       });
 
       it("works", async () => {
-        const w1BalanceBefore = await ipft1155.balanceOf(
-          w1.address,
-          multihash.digest
+        const w1BalanceBefore = await ipft1155.balanceOf(w1.address, id);
+        await ipft1155.connect(w1).mint(w1.address, id, 10, []);
+        expect(await ipft1155.connect(w1).balanceOf(w1.address, id)).to.equal(
+          w1BalanceBefore.add(10)
         );
-
-        await ipft1155
-          .connect(w1)
-          .mint(w1.address, multihash.digest, 10, false, []);
-
-        expect(
-          await ipft1155.connect(w1).balanceOf(w1.address, multihash.digest)
-        ).to.equal(w1BalanceBefore.add(10));
       });
-    });
-
-    describe("when finalized", () => {
-      before(async () => {
-        await ipft1155.mint(w0.address, multihash.digest, 0, true, []);
-      });
-
-      it("fails", async () => {
-        expect(await ipft1155.isFinalized(multihash.digest)).to.be.true;
-
-        await expect(
-          ipft1155.mint(w0.address, multihash.digest, 10, false, [])
-        ).to.be.revertedWith("IPFT(1155): finalized");
-      });
-    });
-  });
-
-  describe("claim & minting", () => {
-    it("works", async () => {
-      let content1 = DagCbor.encode({
-        metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L5"),
-        ipft: new IPFTTag(
-          await getChainId(provider),
-          ipft1155.address,
-          w0.address
-        ).toBytes(),
-      });
-
-      let multihash1 = await keccak256.digest(content1);
-
-      const w1BalanceBefore = await ipft1155.balanceOf(
-        w1.address,
-        multihash1.digest
-      );
-
-      const totalSupplyBefore = await ipft1155.totalSupply(multihash1.digest);
-
-      const iface = new ethers.utils.Interface(Ipft1155ABI.abi);
-
-      await ipft1155.multicall([
-        iface.encodeFunctionData("claim", [
-          multihash1.digest,
-          w0.address,
-          content1,
-          8,
-          DagCbor.code,
-          10,
-        ]),
-        iface.encodeFunctionData("mint", [
-          w1.address,
-          multihash1.digest,
-          10,
-          false,
-          [],
-        ]),
-      ]);
-
-      expect(await ipft1155.balanceOf(w1.address, multihash1.digest)).to.eq(
-        w1BalanceBefore.add(10)
-      );
-
-      expect(await ipft1155.totalSupply(multihash1.digest)).to.equal(
-        totalSupplyBefore.add(10)
-      );
     });
   });
 });

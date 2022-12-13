@@ -1,29 +1,61 @@
-import { ethers } from "ethers";
+import { Tag } from "../../src/tag.mjs";
+import { encode } from "multiformats/block";
+import { BlockView } from "multiformats/block/interface";
+import * as DagCbor from "@ipld/dag-cbor";
+import { keccak256 } from "@multiformats/sha3";
+import { CID } from "multiformats";
 
-export class IPFTTag {
-  constructor(
-    public readonly chainId: number,
-    public readonly contract: string,
-    public readonly author: string
-  ) {}
+export async function contentBlock(
+  chainId: number,
+  contractAddress: string,
+  authorAddress: string,
+  metadataCID: CID = CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4")
+): Promise<{
+  block: BlockView;
+  tagOffset: number;
+}> {
+  const ipft = new Tag(chainId, contractAddress, authorAddress).toBytes();
 
-  toBytes(): Uint8Array {
-    const tag = Buffer.alloc(56);
+  const block = await encode({
+    value: {
+      ["metadata.json"]: metadataCID,
+      ipft,
+    },
+    codec: DagCbor,
+    hasher: keccak256,
+  });
 
-    tag.writeUint32BE(0x69706674); // "ipft"
-    tag.writeUint32BE(0x0165766d, 4); // "\x{01}evm"
-    tag.write(this.chainId.toString(16).padStart(16, "0"), 8, 8, "hex");
-    tag.write(this.contract.slice(2), 16, 20, "hex");
-    tag.write(this.author.slice(2), 36, 20, "hex");
+  const tagOffset = indexOfMulti(block.bytes, ipft);
 
-    return tag;
-  }
+  return {
+    block,
+    tagOffset,
+  };
 }
 
-export async function getChainId(
-  provider: ethers.providers.Provider
-): Promise<number> {
-  // FIXME: It is 1337 locally, but 1 in the contract.
-  // return (await provider.getNetwork()).chainId;
-  return 1;
+/**
+ * Search for a multi-byte `pattern` in `bytes`.
+ */
+export function indexOfMulti(bytes: Uint8Array, pattern: Uint8Array): number {
+  const patternLength = pattern.length;
+  const bytesLength = bytes.length;
+
+  for (let i = 0; i < bytesLength; i++) {
+    if (bytes[i] === pattern[0]) {
+      let found = true;
+
+      for (let j = 1; j < patternLength; j++) {
+        if (bytes[i + j] !== pattern[j]) {
+          found = false;
+          break;
+        }
+      }
+
+      if (found) {
+        return i;
+      }
+    }
+  }
+
+  return -1;
 }

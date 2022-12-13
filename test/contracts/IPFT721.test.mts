@@ -2,112 +2,74 @@
 //
 
 import { expect, use } from "chai";
-import { ethers } from "ethers";
 import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
 import IpftABI from "../../waffle/IPFT.json" assert { type: "json" };
-import Ipft721ABI from "../../waffle/IPFT721.json" assert { type: "json" };
-import { Ipft721 } from "../../waffle/types/Ipft721.js";
+import Ipft721ImplABI from "../../waffle/IPFT721Impl.json" assert { type: "json" };
+import { Ipft721Impl } from "../../waffle/types/Ipft721Impl.js";
+import { contentBlock } from "./util.mjs";
 import * as DagCbor from "@ipld/dag-cbor";
-import { keccak256 } from "@multiformats/sha3";
-import { CID } from "multiformats";
-import { IPFTTag, getChainId } from "./util.mjs";
 
 use(solidity);
 
-describe("IPFT(721)", async () => {
+describe("IPFT721", async () => {
   const provider = new MockProvider();
   const [w0, w1, w2] = provider.getWallets();
 
-  let ipft721: Ipft721;
+  let chainId: number;
+  let ipft721: Ipft721Impl;
 
   before(async () => {
+    // FIXME: chainId = (await provider.getNetwork()).chainId;
+    chainId = 1;
+
     const ipft = await deployContract(w0, IpftABI);
-    link(Ipft721ABI, "src/contracts/IPFT.sol:IPFT", ipft.address);
-    ipft721 = (await deployContract(w0, Ipft721ABI)) as Ipft721;
+    link(Ipft721ImplABI, "src/contracts/IPFT.sol:IPFT", ipft.address);
+    ipft721 = (await deployContract(w0, Ipft721ImplABI)) as Ipft721Impl;
   });
 
   describe("minting", () => {
     it("fails on invalid tag offset", async () => {
-      const content = DagCbor.encode({
-        metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipft: new IPFTTag(
-          await getChainId(provider),
-          ipft721.address,
-          w0.address
-        ).toBytes(),
-      });
-
-      const multihash = await keccak256.digest(content);
+      const { block, tagOffset } = await contentBlock(
+        chainId,
+        ipft721.address,
+        w0.address
+      );
 
       await expect(
         ipft721.mint(
-          multihash.digest,
           w0.address,
-          content,
-          9, // This
-          DagCbor.code,
-          10,
+          block.cid.multihash.digest,
+          block.bytes,
+          block.cid.code,
+          tagOffset + 1, // This
           w0.address
         )
       ).to.be.revertedWith("IPFT: invalid magic bytes");
     });
 
     it("works", async () => {
-      const content = DagCbor.encode({
-        metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipft: new IPFTTag(
-          await getChainId(provider),
-          ipft721.address,
-          w0.address
-        ).toBytes(),
-      });
+      const { block, tagOffset } = await contentBlock(
+        chainId,
+        ipft721.address,
+        w0.address
+      );
 
-      const multihash = await keccak256.digest(content);
+      const id = block.cid.multihash.digest;
 
-      expect(
-        await ipft721.mint(
-          multihash.digest,
-          w0.address,
-          content,
-          8,
-          DagCbor.code,
-          10,
-          w0.address
-        )
-      ).to.emit(ipft721, "Mint");
-      // TODO: .withArgs(w0.address, w0.address, multihash.digest, DagCbor.code);
+      await ipft721.mint(
+        w0.address,
+        id,
+        block.bytes,
+        block.cid.code,
+        tagOffset,
+        w0.address
+      );
 
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);
-      expect(await ipft721.authorOf(multihash.digest)).to.eq(w0.address);
-      expect(await ipft721.ownerOf(multihash.digest)).to.eq(w0.address);
-      expect(await ipft721.codec(multihash.digest)).to.eq(DagCbor.code);
-
-      const royaltyInfo = await ipft721.royaltyInfo(
-        multihash.digest,
-        ethers.utils.parseEther("1")
-      );
-
-      expect(royaltyInfo.receiver).to.eq(w0.address);
-      expect(royaltyInfo.royaltyAmount).to.eq(
-        ethers.utils.parseEther("0.039215686274509803")
-      );
-    });
-  });
-
-  describe("uri", () => {
-    it("works", async () => {
-      const content = DagCbor.encode({
-        metadata: CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4"),
-        ipft: new IPFTTag(
-          await getChainId(provider),
-          ipft721.address,
-          w0.address
-        ).toBytes(),
-      });
-
-      const multihash = await keccak256.digest(content);
-
-      expect(await ipft721.tokenURI(multihash.digest)).to.eq(
+      expect(await ipft721.authorOf(id)).to.eq(w0.address);
+      expect(await ipft721.ownerOf(id)).to.eq(w0.address);
+      expect(await ipft721.codecOf(id)).to.eq(DagCbor.code);
+      expect(await ipft721.tokenURI(id)).to.eq(
         "http://f01711b20{id}.ipfs/metadata.json"
       );
     });
