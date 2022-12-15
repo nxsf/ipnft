@@ -16,11 +16,9 @@ module.exports = {
   },
   networks: {
     localhost: {
-      url: "http://127.0.0.1:8545",
       chainId: 1337,
     },
     hardhat: {
-      allowUnlimitedContractSize: true,
       chainId: 1337,
     },
     mumbai: {
