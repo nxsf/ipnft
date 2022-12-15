@@ -28,10 +28,7 @@ async function deploy(contractName, deployOptions = {}, ...args) {
 }
 
 async function main() {
-  const ipft = await deploy("IPFT");
-  await deploy("IPFT721", { libraries: { IPFT: ipft.address } });
-  await deploy("IPFT1155", { libraries: { IPFT: ipft.address } });
-  await deploy("IPFTRedeemable", { libraries: { IPFT: ipft.address } });
+  await deploy("IPFT");
 }
 
 main()
