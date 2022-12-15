@@ -3,9 +3,9 @@
 
 import { expect, use } from "chai";
 import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
-import IpftABI from "../../waffle/IPFT.json" assert { type: "json" };
-import Ipft721ImplABI from "../../waffle/IPFT721Impl.json" assert { type: "json" };
-import { Ipft721Impl } from "../../waffle/types/Ipft721Impl.js";
+import IpftABI from "../../contracts/IPFT.json" assert { type: "json" };
+import Ipft721ImplABI from "../../contracts/IPFT721Impl.json" assert { type: "json" };
+import { Ipft721Impl } from "../../contracts/types/Ipft721Impl.js";
 import { contentBlock } from "./util.mjs";
 import * as DagCbor from "@ipld/dag-cbor";
 
@@ -23,7 +23,7 @@ describe("IPFT721", async () => {
     chainId = 1;
 
     const ipft = await deployContract(w0, IpftABI);
-    link(Ipft721ImplABI, "src/contracts/IPFT.sol:IPFT", ipft.address);
+    link(Ipft721ImplABI, "contracts/IPFT.sol:IPFT", ipft.address);
     ipft721 = (await deployContract(w0, Ipft721ImplABI)) as Ipft721Impl;
   });
 

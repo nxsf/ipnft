@@ -1,8 +1,8 @@
 import { expect, use } from "chai";
 import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
-import IpftABI from "../../waffle/IPFT.json" assert { type: "json" };
-import Ipft1155ImplABI from "../../waffle/IPFT1155Impl.json" assert { type: "json" };
-import { Ipft1155Impl } from "../../waffle/types/Ipft1155Impl";
+import IpftABI from "../../contracts/IPFT.json" assert { type: "json" };
+import Ipft1155ImplABI from "../../contracts/IPFT1155Impl.json" assert { type: "json" };
+import { Ipft1155Impl } from "../../contracts/types/Ipft1155Impl";
 import { contentBlock } from "./util.mjs";
 import { BlockView } from "multiformats/block/interface";
 import * as DagCbor from "@ipld/dag-cbor";
@@ -25,7 +25,7 @@ describe("IPFT1155", async () => {
     chainId = 1;
 
     const ipft = await deployContract(w0, IpftABI, []);
-    link(Ipft1155ImplABI, "src/contracts/IPFT.sol:IPFT", ipft.address);
+    link(Ipft1155ImplABI, "contracts/IPFT.sol:IPFT", ipft.address);
 
     ipft1155 = (await deployContract(w0, Ipft1155ImplABI)) as Ipft1155Impl;
 

@@ -5,9 +5,6 @@ require("dotenv").config();
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-  paths: {
-    sources: "./src/contracts",
-  },
   solidity: {
     version: "0.8.12",
     settings: {

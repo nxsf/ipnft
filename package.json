@@ -43,8 +43,7 @@
     "typescript": "^4.8.4"
   },
   "files": [
-    "waffle/types",
-    "src/contracts/*.sol",
+    "contracts",
     "src/tag.mts"
   ]
 }
