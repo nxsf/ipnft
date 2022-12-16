@@ -13,10 +13,10 @@ contract IPFT721Impl is IPFT721 {
         address to,
         uint256 id,
         bytes calldata content,
-        uint32 codec,
+        uint32 contentCodec,
         uint32 tagOffset,
         address author
     ) public {
-        _mint(to, id, content, codec, tagOffset, author);
+        _mint(to, id, content, contentCodec, tagOffset, author);
     }
 }

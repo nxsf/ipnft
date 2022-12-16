@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 
-import "./IPFT.sol";
+import "./LibIPFT.sol";
+import "./IIPFT.sol";
 
 /**
  * @title Interplanetary File Token (1155)
@@ -17,33 +18,51 @@ import "./IPFT.sol";
  *
  * Only after claiming an IPFT1155, it can be {_mint}ed.
  */
-contract IPFT1155 is ERC1155 {
+contract IPFT1155 is ERC1155, IIPFT {
     /// An IPFT author.
     mapping(uint256 => address) _author;
 
     /// An IPFT content codec (e.g. 0x71 for dag-cbor).
-    mapping(uint256 => uint32) _codec;
+    mapping(uint256 => uint32) _multicodec;
 
     constructor() ERC1155("") {}
 
     /**
-     * Get an IPFT author.
-     * @notice Zero address means the token is not claimed yet.
+     * See {IIPFT.authorOf}.
      */
-    function authorOf(uint256 tokenId) public view returns (address) {
+    function authorOf(
+        uint256 tokenId
+    ) public view override(IIPFT) returns (address) {
         return _author[tokenId];
     }
 
     /**
-     * Get an IPFT multicodec[^1] value.
-     *
-     * @notice 0x0 is a legal (identity) codec.
-     * To make sure the token is claimed, use {authorOf} instead.
-     *
-     * [^1]: https://github.com/multiformats/multicodec
+     * See {IIPFT.multicodecOf}.
      */
-    function codecOf(uint256 tokenId) public view returns (uint32) {
-        return _codec[tokenId];
+    function multicodecOf(
+        uint256 tokenId
+    ) public view override(IIPFT) returns (uint32) {
+        return _multicodec[tokenId];
+    }
+
+    /**
+     * Always returns 0x1b (keccak-256).
+     * See {IIPFT.multihashOf}.
+     */
+    function multihashOf(
+        uint256
+    ) public pure override(IIPFT) returns (uint32) {
+        return 0x1b;
+    }
+
+    /**
+     * Always returns 32.
+     * See {IIPFT.digestSizeOf}.
+     */
+    function digestSizeOf(
+        uint256
+    ) public pure override(IIPFT) returns (uint32) {
+        return 32;
     }
 
     /**
@@ -52,27 +71,35 @@ contract IPFT1155 is ERC1155 {
     function uri(
         uint256 id
     ) public view override(ERC1155) returns (string memory) {
-        return string.concat(IPFT.uri(_codec[id]), "/metadata.json");
+        return
+            string.concat(
+                LibIPFT.uri(
+                    multicodecOf(id),
+                    multihashOf(id),
+                    digestSizeOf(id)
+                ),
+                "/metadata.json"
+            );
     }
 
     /**
      * Claim an IPFT authorship by verifying that `content` contains
-     * a valid IPFT tag at `offset`. See {IPFT.verifyTag} for more details.
+     * a valid IPFT tag at `offset`. See {LibIPFT.verifyTag} for more details.
      * Once claimed, the token may be {_mint}ed.
      *
      * @notice The content shall have an ERC1155 Metadata JSON file resolvable
      * at the "/metadata.json" path. See {uri} for a metadata URI example.
      *
-     * @param id        The token ID, also the keccak256 hash of `content`.
-     * @param content   The file containing an IPFT tag.
-     * @param codec     The content codec (e.g. `0x71` for dag-cbor).
-     * @param tagOffset The IPFT tag offset in bytes.
-     * @param author    The to-become-token-author address.
+     * @param id         The token ID, also the keccak256 hash of `content`.
+     * @param content    The file containing an IPFT tag.
+     * @param multicodec The content multicodec (e.g. `0x71` for dag-cbor).
+     * @param tagOffset  The IPFT tag offset in bytes.
+     * @param author     The to-become-token-author address.
      */
     function _claim(
         uint256 id,
         bytes calldata content,
-        uint32 codec,
+        uint32 multicodec,
         uint32 tagOffset,
         address author
     ) internal {
@@ -83,17 +110,11 @@ contract IPFT1155 is ERC1155 {
 
         require(_author[id] == address(0), "IPFT1155: already claimed");
 
-        bytes32 hash = IPFT.verifyTag(
-            content,
-            tagOffset,
-            address(this),
-            author
-        );
-
-        require(uint256(hash) == id, "IPFT1155: hash mismatch");
+        LibIPFT.verifyTag(content, tagOffset, address(this), author);
+        require(uint256(keccak256(content)) == id, "IPFT1155: hash mismatch");
 
         _author[id] = author;
-        _codec[id] = codec;
+        _multicodec[id] = multicodec;
     }
 
     /**

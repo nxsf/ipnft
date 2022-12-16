@@ -28,7 +28,7 @@ async function deploy(contractName, deployOptions = {}, ...args) {
 }
 
 async function main() {
-  await deploy("IPFT");
+  await deploy("LibIPFT");
 }
 
 main()

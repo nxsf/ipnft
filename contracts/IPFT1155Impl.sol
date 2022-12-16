@@ -9,12 +9,12 @@ import "./IPFT1155.sol";
 contract IPFT1155Impl is IPFT1155 {
     function claim(
         uint256 id,
-        bytes calldata content,
+        bytes calldata contentCodec,
         uint32 codec,
         uint32 tagOffset,
         address author
     ) public {
-        _claim(id, content, codec, tagOffset, author);
+        _claim(id, contentCodec, codec, tagOffset, author);
     }
 
     function mint(

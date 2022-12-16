@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-library IPFT {
+/**
+ * @title Interplanetary File Token (IPFT) library
+ */
+library LibIPFT {
     bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
 
     /**
@@ -20,66 +23,72 @@ library IPFT {
      * @param tagOffset The IPFT tag offset in bytes.
      * @param contract_ The proving contract address.
      * @param author    The to-become-token-author address.
-     *
-     * @return hash The keccak256 hash of `content`.
      */
     function verifyTag(
         bytes calldata content,
         uint32 tagOffset,
         address contract_,
         address author
-    ) external view returns (bytes32 hash) {
+    ) external view {
         // Check the content length so that it may contain the tag.
-        require(content.length >= tagOffset + 56, "IPFT: content too short");
+        require(
+            content.length >= tagOffset + 56,
+            "LibIPFT: content too short"
+        );
 
         // Check the magic and version bytes.
         require(
             _bytesToUint64(content, tagOffset) == 0x697066740165766d,
-            "IPFT: invalid magic bytes"
+            "LibIPFT: invalid magic bytes"
         );
 
         // Check the chain id.
         require(
             _bytesToUint64(content, tagOffset + 8) == uint64(block.chainid),
-            "IPFT: invalid chain id"
+            "LibIPFT: invalid chain id"
         );
 
         // Check the tag contract address.
         require(
             _bytesToAddress(content, tagOffset + 16) == contract_,
-            "IPFT: invalid contract address"
+            "LibIPFT: invalid contract address"
         );
 
         // Check the tag author.
         require(
             _bytesToAddress(content, tagOffset + 36) == author,
-            "IPFT: invalid author address"
+            "LibIPFT: invalid author address"
         );
-
-        return keccak256(content);
     }
 
     /**
-     * Return string `"http://f01[codec]1b20{id}.ipfs"`,
-     * where `[codec]` is replaced automaticly with the actual token codec.
+     * Return string `"http://f01[multicodec][multihash][digestSize]{id}.ipfs"`.
      *
      * ```
      * http:// f 01 71 1b 20 {id} .ipfs
-     *         │ │  │  │  │  └ Literal "{id}" string (to be hex-interoplated client-side)
-     *         │ │  │  │  └ 32 bytes
-     *         │ │  │  └ keccak256
-     *         │ │  └ dag-cbor (for example)
+     *         │ │  │  │  │  └ Literal "{id}" string (to be hex-interoplated client-side)[^1]
+     *         │ │  │  │  └ [digestSize], e.g. 32
+     *         │ │  │  └ [multihash], e.g. keccak-256
+     *         │ │  └ [multicodec], e.g. dag-cbor
      *         │ └ cidv1
      *         └ base16
      * ```
+     *
+     * [^1]: In accordance with ERC721 & ERC1155 metadata standards.
      */
-    function uri(uint32 contentCodec) external pure returns (string memory) {
+    function uri(
+        uint32 multicodec,
+        uint32 multihash,
+        uint32 digestSize
+    ) external pure returns (string memory) {
         return
             string(
                 abi.encodePacked(
                     "http://f01",
-                    _toHexString(contentCodec),
-                    "1b20{id}.ipfs"
+                    _toHexString(multicodec),
+                    _toHexString(multihash),
+                    _toHexString(digestSize),
+                    "{id}.ipfs"
                 )
             );
     }

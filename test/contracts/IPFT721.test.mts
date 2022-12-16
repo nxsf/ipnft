@@ -3,11 +3,12 @@
 
 import { expect, use } from "chai";
 import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
-import IpftABI from "../../contracts/IPFT.json" assert { type: "json" };
+import LibIpftABI from "../../contracts/LibIPFT.json" assert { type: "json" };
 import Ipft721ImplABI from "../../contracts/IPFT721Impl.json" assert { type: "json" };
 import { Ipft721Impl } from "../../contracts/types/Ipft721Impl.js";
 import { contentBlock } from "./util.mjs";
 import * as DagCbor from "@ipld/dag-cbor";
+import { keccak256 } from "@multiformats/sha3";
 
 use(solidity);
 
@@ -22,8 +23,8 @@ describe("IPFT721", async () => {
     // FIXME: chainId = (await provider.getNetwork()).chainId;
     chainId = 1;
 
-    const ipft = await deployContract(w0, IpftABI);
-    link(Ipft721ImplABI, "contracts/IPFT.sol:IPFT", ipft.address);
+    const libIpft = await deployContract(w0, LibIpftABI);
+    link(Ipft721ImplABI, "contracts/LibIPFT.sol:LibIPFT", libIpft.address);
     ipft721 = (await deployContract(w0, Ipft721ImplABI)) as Ipft721Impl;
   });
 
@@ -68,7 +69,9 @@ describe("IPFT721", async () => {
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);
       expect(await ipft721.authorOf(id)).to.eq(w0.address);
       expect(await ipft721.ownerOf(id)).to.eq(w0.address);
-      expect(await ipft721.codecOf(id)).to.eq(DagCbor.code);
+      expect(await ipft721.multicodecOf(id)).to.eq(DagCbor.code);
+      expect(await ipft721.multihashOf(id)).to.eq(keccak256.code);
+      expect(await ipft721.digestSizeOf(id)).to.eq(32);
       expect(await ipft721.tokenURI(id)).to.eq(
         "http://f01711b20{id}.ipfs/metadata.json"
       );
