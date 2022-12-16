@@ -41,6 +41,7 @@
     "typescript": "^4.8.4"
   },
   "files": [
-    "src/tag.mts"
+    "src/tag.mts",
+    "contracts/*.sol"
   ]
 }
