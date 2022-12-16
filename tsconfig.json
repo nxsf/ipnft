@@ -13,5 +13,5 @@
       "@multiformats/sha3": ["src/@types/@multiformats/sha3.d.mts"]
     }
   },
-  "include": ["./test", "./waffle/types", "./script", "./src/@types"]
+  "include": ["./test", "./contracts/types", "./script", "./src/@types"]
 }
