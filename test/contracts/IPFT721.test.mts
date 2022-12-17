@@ -56,22 +56,28 @@ describe("IPFT721", async () => {
       );
 
       const id = block.cid.multihash.digest;
+      const idHex = "0x" + Buffer.from(id).toString("hex");
 
-      await ipft721.mint(
-        w0.address,
-        id,
-        block.bytes,
-        block.cid.code,
-        tagOffset,
-        w0.address
-      );
+      await expect(
+        ipft721.mint(
+          w0.address,
+          id,
+          block.bytes,
+          block.cid.code,
+          tagOffset,
+          w0.address
+        )
+      )
+        .to.emit(ipft721, "Claim")
+        .withArgs(w0.address, DagCbor.code, keccak256.code, 32, idHex);
 
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);
       expect(await ipft721.authorOf(id)).to.eq(w0.address);
       expect(await ipft721.ownerOf(id)).to.eq(w0.address);
-      expect(await ipft721.multicodecOf(id)).to.eq(DagCbor.code);
-      expect(await ipft721.multihashOf(id)).to.eq(keccak256.code);
-      expect(await ipft721.digestSizeOf(id)).to.eq(32);
+      expect(await ipft721.contentCodecOf(id)).to.eq(DagCbor.code);
+      expect(await ipft721.multihashCodecOf(id)).to.eq(keccak256.code);
+      expect(await ipft721.multihashDigestSizeOf(id)).to.eq(32);
+      expect(await ipft721.multihashDigestOf(id)).to.eq(idHex);
       expect(await ipft721.tokenURI(id)).to.eq(
         "http://f01711b20{id}.ipfs/metadata.json"
       );

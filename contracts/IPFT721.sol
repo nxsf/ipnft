@@ -21,7 +21,7 @@ contract IPFT721 is ERC721, IIPFT {
     mapping(uint256 => address) _author;
 
     /// An IPFT content codec (e.g. 0x71 for dag-cbor).
-    mapping(uint256 => uint32) _multicodec;
+    mapping(uint256 => uint32) _contentCodec;
 
     constructor(
         string memory name,
@@ -38,19 +38,19 @@ contract IPFT721 is ERC721, IIPFT {
     }
 
     /**
-     * See {IIPFT.multicodecOf}.
+     * See {IIPFT.contentCodecOf}.
      */
-    function multicodecOf(
+    function contentCodecOf(
         uint256 tokenId
     ) public view override(IIPFT) returns (uint32) {
-        return _multicodec[tokenId];
+        return _contentCodec[tokenId];
     }
 
     /**
      * Always return 0x1b (keccak-256).
-     * See {IIPFT.multihashOf}.
+     * See {IIPFT.multihashCodecOf}.
      */
-    function multihashOf(
+    function multihashCodecOf(
         uint256
     ) public pure override(IIPFT) returns (uint32) {
         return 0x1b;
@@ -58,12 +58,22 @@ contract IPFT721 is ERC721, IIPFT {
 
     /**
      * Always return 32.
-     * See {IIPFT.digestSizeOf}.
+     * See {IIPFT.multihashDigestSizeOf}.
      */
-    function digestSizeOf(
+    function multihashDigestSizeOf(
         uint256
     ) public pure override(IIPFT) returns (uint32) {
         return 32;
+    }
+
+    /**
+     * Return the token ID as the multihash digest.
+     * See {IIPFT.multihashDigestOf}.
+     */
+    function multihashDigestOf(
+        uint256 tokenId
+    ) external pure override(IIPFT) returns (bytes memory) {
+        return abi.encodePacked(tokenId);
     }
 
     /**
@@ -75,9 +85,9 @@ contract IPFT721 is ERC721, IIPFT {
         return
             string.concat(
                 LibIPFT.uri(
-                    multicodecOf(tokenId),
-                    multihashOf(tokenId),
-                    digestSizeOf(tokenId)
+                    contentCodecOf(tokenId),
+                    multihashCodecOf(tokenId),
+                    multihashDigestSizeOf(tokenId)
                 ),
                 "/metadata.json"
             );
@@ -90,18 +100,18 @@ contract IPFT721 is ERC721, IIPFT {
      * @notice The content shall have an ERC721 Metadata JSON file resolvable
      * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
      *
-     * @param to         The address to mint the token to.
-     * @param id         The token id, also the keccak256 hash of `content`.
-     * @param content    The file containing an IPFT tag.
-     * @param multicodec The content multicodec (e.g. `0x71` for dag-cbor).
-     * @param tagOffset  The IPFT tag offset in bytes.
-     * @param author     The to-become-token-author address.
+     * @param to           The address to mint the token to.
+     * @param id           The token id, also the keccak256 hash of `content`.
+     * @param content      The file containing an IPFT tag.
+     * @param contentCodec The content multicodec (e.g. `0x71` for dag-cbor).
+     * @param tagOffset    The IPFT tag offset in bytes.
+     * @param author       The to-become-token-author address.
      */
     function _mint(
         address to,
         uint256 id,
         bytes calldata content,
-        uint32 multicodec,
+        uint32 contentCodec,
         uint32 tagOffset,
         address author
     ) internal {
@@ -122,7 +132,10 @@ contract IPFT721 is ERC721, IIPFT {
         _author[id] = author;
 
         // Set the multicodec.
-        _multicodec[id] = multicodec;
+        _contentCodec[id] = contentCodec;
+
+        // Emit the IIPFT claim event.
+        emit Claim(author, contentCodec, 0x1b, 32, abi.encodePacked(id));
 
         // Mint the IPFT721.
         _mint(to, id);

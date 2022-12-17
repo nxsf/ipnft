@@ -19,6 +19,7 @@ describe("IPFT1155", async () => {
 
   let block: BlockView;
   let id: Uint8Array;
+  let idHex: string;
   let tagOffset: number;
 
   before(async () => {
@@ -34,24 +35,25 @@ describe("IPFT1155", async () => {
 
     block = res.block;
     id = block.cid.multihash.digest;
+    idHex = "0x" + Buffer.from(id).toString("hex");
     tagOffset = res.tagOffset;
   });
 
-  describe("minting", () => {
-    describe("without claiming", () => {
-      it("fails", async () => {
-        await expect(ipft1155.mint(w0.address, id, 10, [])).to.be.revertedWith(
-          "IPFT1155: unauthorized"
-        );
-      });
+  describe("claiming", () => {
+    it("works", async () => {
+      await expect(
+        ipft1155.claim(id, block.bytes, block.cid.code, tagOffset, w0.address)
+      )
+        .to.emit(ipft1155, "Claim")
+        .withArgs(w0.address, DagCbor.code, keccak256.code, 32, idHex);
+    });
+  });
 
-      after(async () => {
-        await ipft1155.claim(
-          id,
-          block.bytes,
-          block.cid.code,
-          tagOffset,
-          w0.address
+  describe("minting", () => {
+    describe("without prior claiming", () => {
+      it("fails", async () => {
+        await expect(ipft1155.mint(w0.address, 42, 10, [])).to.be.revertedWith(
+          "IPFT1155: unauthorized"
         );
       });
     });
@@ -65,9 +67,10 @@ describe("IPFT1155", async () => {
         );
 
         expect(await ipft1155.authorOf(id)).to.eq(w0.address);
-        expect(await ipft1155.multicodecOf(id)).to.eq(DagCbor.code);
-        expect(await ipft1155.multihashOf(id)).to.eq(keccak256.code);
-        expect(await ipft1155.digestSizeOf(id)).to.eq(32);
+        expect(await ipft1155.contentCodecOf(id)).to.eq(DagCbor.code);
+        expect(await ipft1155.multihashCodecOf(id)).to.eq(keccak256.code);
+        expect(await ipft1155.multihashDigestSizeOf(id)).to.eq(32);
+        expect(await ipft1155.multihashDigestOf(id)).to.eq(idHex);
         expect(await ipft1155.uri(id)).to.eq(
           "http://f01711b20{id}.ipfs/metadata.json"
         );

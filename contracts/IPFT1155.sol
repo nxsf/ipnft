@@ -23,7 +23,7 @@ contract IPFT1155 is ERC1155, IIPFT {
     mapping(uint256 => address) _author;
 
     /// An IPFT content codec (e.g. 0x71 for dag-cbor).
-    mapping(uint256 => uint32) _multicodec;
+    mapping(uint256 => uint32) _contentCodec;
 
     constructor() ERC1155("") {}
 
@@ -37,19 +37,19 @@ contract IPFT1155 is ERC1155, IIPFT {
     }
 
     /**
-     * See {IIPFT.multicodecOf}.
+     * See {IIPFT.contentCodecOf}.
      */
-    function multicodecOf(
+    function contentCodecOf(
         uint256 tokenId
     ) public view override(IIPFT) returns (uint32) {
-        return _multicodec[tokenId];
+        return _contentCodec[tokenId];
     }
 
     /**
      * Always returns 0x1b (keccak-256).
-     * See {IIPFT.multihashOf}.
+     * See {IIPFT.multihashCodecOf}.
      */
-    function multihashOf(
+    function multihashCodecOf(
         uint256
     ) public pure override(IIPFT) returns (uint32) {
         return 0x1b;
@@ -57,12 +57,22 @@ contract IPFT1155 is ERC1155, IIPFT {
 
     /**
      * Always returns 32.
-     * See {IIPFT.digestSizeOf}.
+     * See {IIPFT.multihashDigestSizeOf}.
      */
-    function digestSizeOf(
+    function multihashDigestSizeOf(
         uint256
     ) public pure override(IIPFT) returns (uint32) {
         return 32;
+    }
+
+    /**
+     * Return the token ID as the multihash digest.
+     * See {IIPFT.multihashDigestOf}.
+     */
+    function multihashDigestOf(
+        uint256 tokenId
+    ) external pure override(IIPFT) returns (bytes memory) {
+        return abi.encodePacked(tokenId);
     }
 
     /**
@@ -74,9 +84,9 @@ contract IPFT1155 is ERC1155, IIPFT {
         return
             string.concat(
                 LibIPFT.uri(
-                    multicodecOf(id),
-                    multihashOf(id),
-                    digestSizeOf(id)
+                    contentCodecOf(id),
+                    multihashCodecOf(id),
+                    multihashDigestSizeOf(id)
                 ),
                 "/metadata.json"
             );
@@ -90,16 +100,16 @@ contract IPFT1155 is ERC1155, IIPFT {
      * @notice The content shall have an ERC1155 Metadata JSON file resolvable
      * at the "/metadata.json" path. See {uri} for a metadata URI example.
      *
-     * @param id         The token ID, also the keccak256 hash of `content`.
-     * @param content    The file containing an IPFT tag.
-     * @param multicodec The content multicodec (e.g. `0x71` for dag-cbor).
-     * @param tagOffset  The IPFT tag offset in bytes.
-     * @param author     The to-become-token-author address.
+     * @param id           The token ID, also the keccak256 hash of `content`.
+     * @param content      The file containing an IPFT tag.
+     * @param contentCodec The content multicodec (e.g. `0x71` for dag-cbor).
+     * @param tagOffset    The IPFT tag offset in bytes.
+     * @param author       The to-become-token-author address.
      */
     function _claim(
         uint256 id,
         bytes calldata content,
-        uint32 multicodec,
+        uint32 contentCodec,
         uint32 tagOffset,
         address author
     ) internal {
@@ -114,7 +124,9 @@ contract IPFT1155 is ERC1155, IIPFT {
         require(uint256(keccak256(content)) == id, "IPFT1155: hash mismatch");
 
         _author[id] = author;
-        _multicodec[id] = multicodec;
+        _contentCodec[id] = contentCodec;
+
+        emit Claim(author, contentCodec, 0x1b, 32, abi.encodePacked(id));
     }
 
     /**
