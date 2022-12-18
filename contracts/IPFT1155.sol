@@ -28,9 +28,9 @@ contract IPFT1155 is ERC1155, IIPFT {
     constructor() ERC1155("") {}
 
     /**
-     * See {IIPFT.authorOf}.
+     * See {IIPFT.contentAuthorOf}.
      */
-    function authorOf(
+    function contentAuthorOf(
         uint256 tokenId
     ) public view override(IIPFT) returns (address) {
         return _author[tokenId];

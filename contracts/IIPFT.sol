@@ -7,7 +7,7 @@ interface IIPFT {
      * Should be emitted prior to the first minting of the IPFT.
      */
     event Claim(
-        address indexed author,
+        address indexed contentAuthor,
         uint32 contentCodec,
         uint32 multihashCodec,
         uint32 multihashDigestSize,
@@ -15,10 +15,10 @@ interface IIPFT {
     );
 
     /**
-     * Get an IPFT author.
+     * Get an IPFT content author.
      * Zero address means that the author is undefined.
      */
-    function authorOf(uint256 tokenId) external view returns (address);
+    function contentAuthorOf(uint256 tokenId) external view returns (address);
 
     /**
      * Get an IPFT CID content multicodec[^1] value.

@@ -72,7 +72,7 @@ describe("IPFT721", async () => {
         .withArgs(w0.address, DagCbor.code, keccak256.code, 32, idHex);
 
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);
-      expect(await ipft721.authorOf(id)).to.eq(w0.address);
+      expect(await ipft721.contentAuthorOf(id)).to.eq(w0.address);
       expect(await ipft721.ownerOf(id)).to.eq(w0.address);
       expect(await ipft721.contentCodecOf(id)).to.eq(DagCbor.code);
       expect(await ipft721.multihashCodecOf(id)).to.eq(keccak256.code);

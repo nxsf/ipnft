@@ -29,9 +29,9 @@ contract IPFT721 is ERC721, IIPFT {
     ) ERC721(name, symbol) {}
 
     /**
-     * See {IIPFT.authorOf}.
+     * See {IIPFT.contentAuthorOf}.
      */
-    function authorOf(
+    function contentAuthorOf(
         uint256 tokenId
     ) public view override(IIPFT) returns (address) {
         return _author[tokenId];

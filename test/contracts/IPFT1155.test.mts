@@ -66,7 +66,7 @@ describe("IPFT1155", async () => {
           w0BalanceBefore.add(10)
         );
 
-        expect(await ipft1155.authorOf(id)).to.eq(w0.address);
+        expect(await ipft1155.contentAuthorOf(id)).to.eq(w0.address);
         expect(await ipft1155.contentCodecOf(id)).to.eq(DagCbor.code);
         expect(await ipft1155.multihashCodecOf(id)).to.eq(keccak256.code);
         expect(await ipft1155.multihashDigestSizeOf(id)).to.eq(32);
