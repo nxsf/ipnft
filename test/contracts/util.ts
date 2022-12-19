@@ -1,4 +1,4 @@
-import { Tag } from "../../src/tag.mjs";
+import { Tag } from "../../src/Tag";
 import { encode } from "multiformats/block";
 import { BlockView } from "multiformats/block/interface";
 import * as DagCbor from "@ipld/dag-cbor";

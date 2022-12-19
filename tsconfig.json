@@ -2,16 +2,15 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
+    "moduleResolution": "Node",
     "useDefineForClassFields": false,
     "strict": true,
     "esModuleInterop": true,
+    "declaration": true,
     "outDir": "dist",
-    "moduleResolution": "Node",
-    "resolveJsonModule": true,
+    "typeRoots": ["node_modules/@types", "src/@types"],
     "allowSyntheticDefaultImports": true,
-    "paths": {
-      "@multiformats/sha3": ["src/@types/@multiformats/sha3.d.mts"]
-    }
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["./test", "./contracts/types", "./script", "./src/@types"]
+  "include": ["contracts/typechain", "src", "test"]
 }

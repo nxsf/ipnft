@@ -1,9 +1,11 @@
 import { expect, use } from "chai";
-import { deployContract, MockProvider, solidity, link } from "ethereum-waffle";
-import LibIpftABI from "../../contracts/LibIPFT.json" assert { type: "json" };
-import Ipft1155ImplABI from "../../contracts/IPFT1155Impl.json" assert { type: "json" };
-import { Ipft1155Impl } from "../../contracts/types/Ipft1155Impl";
-import { contentBlock } from "./util.mjs";
+import { deployContract, MockProvider, solidity } from "ethereum-waffle";
+import {
+  LibIPFT__factory,
+  IPFT1155Impl__factory,
+  IPFT1155Impl,
+} from "../../contracts/typechain";
+import { contentBlock } from "./util";
 import { BlockView } from "multiformats/block/interface";
 import * as DagCbor from "@ipld/dag-cbor";
 import { keccak256 } from "@multiformats/sha3";
@@ -15,7 +17,7 @@ describe("IPFT1155", async () => {
   const [w0, w1, w2] = provider.getWallets();
 
   let chainId: number;
-  let ipft1155: Ipft1155Impl;
+  let ipft1155: IPFT1155Impl;
 
   let block: BlockView;
   let id: Uint8Array;
@@ -26,10 +28,16 @@ describe("IPFT1155", async () => {
     // FIXME: chainId = (await provider.getNetwork()).chainId;
     chainId = 1;
 
-    const libIpft = await deployContract(w0, LibIpftABI, []);
-    link(Ipft1155ImplABI, "contracts/LibIPFT.sol:LibIPFT", libIpft.address);
+    const libIpft = await deployContract(w0, LibIPFT__factory as any, []);
 
-    ipft1155 = (await deployContract(w0, Ipft1155ImplABI)) as Ipft1155Impl;
+    const ipft1155Factory = new IPFT1155Impl__factory(
+      {
+        "contracts/LibIPFT.sol:LibIPFT": libIpft.address,
+      },
+      w0
+    );
+
+    ipft1155 = await ipft1155Factory.deploy();
 
     const res = await contentBlock(chainId, ipft1155.address, w0.address);
 

@@ -1,4 +1,5 @@
-const { ethers } = require("hardhat");
+import hardhat from "hardhat";
+const { ethers } = hardhat;
 
 async function deploy(contractName, deployOptions = {}, ...args) {
   const factory = await ethers.getContractFactory(contractName, deployOptions);
