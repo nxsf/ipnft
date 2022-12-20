@@ -7,11 +7,10 @@ interface IIPFT {
      * Should be emitted prior to the first minting of the IPFT.
      */
     event Claim(
+        uint256 indexed contentId, // Also the token ID, and multihash digest
         address indexed contentAuthor,
         uint32 contentCodec,
-        uint32 multihashCodec,
-        uint32 multihashDigestSize,
-        bytes multihashDigest
+        uint32 multihashCodec
     );
 
     /**
@@ -29,22 +28,9 @@ interface IIPFT {
 
     /**
      * Get an IPFT CID multihash multicodec[^1] value.
+     * @notice The multihash digest MUST be 32 or less bytes long.
      *
      * [^1]: https://github.com/multiformats/multicodec
      */
     function multihashCodecOf(uint256 tokenId) external view returns (uint32);
-
-    /**
-     * Get an IPFT CID multihash digest size value.
-     */
-    function multihashDigestSizeOf(
-        uint256 tokenId
-    ) external view returns (uint32);
-
-    /**
-     * Get an IPFT CID multihash digest value.
-     */
-    function multihashDigestOf(
-        uint256 tokenId
-    ) external view returns (bytes memory);
 }

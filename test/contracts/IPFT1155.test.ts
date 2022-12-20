@@ -50,10 +50,10 @@ describe("IPFT1155", async () => {
   describe("claiming", () => {
     it("works", async () => {
       await expect(
-        ipft1155.claim(id, block.bytes, block.cid.code, tagOffset, w0.address)
+        ipft1155.claim(id, w0.address, block.bytes, block.cid.code, tagOffset)
       )
         .to.emit(ipft1155, "Claim")
-        .withArgs(w0.address, DagCbor.code, keccak256.code, 32, idHex);
+        .withArgs(idHex, w0.address, DagCbor.code, keccak256.code);
     });
   });
 
@@ -77,8 +77,6 @@ describe("IPFT1155", async () => {
         expect(await ipft1155.contentAuthorOf(id)).to.eq(w0.address);
         expect(await ipft1155.contentCodecOf(id)).to.eq(DagCbor.code);
         expect(await ipft1155.multihashCodecOf(id)).to.eq(keccak256.code);
-        expect(await ipft1155.multihashDigestSizeOf(id)).to.eq(32);
-        expect(await ipft1155.multihashDigestOf(id)).to.eq(idHex);
         expect(await ipft1155.uri(id)).to.eq(
           "http://f01711b20{id}.ipfs/metadata.json"
         );

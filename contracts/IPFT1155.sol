@@ -19,8 +19,8 @@ import "./IIPFT.sol";
  * Only after claiming an IPFT1155, it can be {_mint}ed.
  */
 contract IPFT1155 is ERC1155, IIPFT {
-    /// An IPFT author.
-    mapping(uint256 => address) _author;
+    /// An IPFT content author.
+    mapping(uint256 => address) _contentAuthor;
 
     /// An IPFT content codec (e.g. 0x71 for dag-cbor).
     mapping(uint256 => uint32) _contentCodec;
@@ -33,7 +33,7 @@ contract IPFT1155 is ERC1155, IIPFT {
     function contentAuthorOf(
         uint256 tokenId
     ) public view override(IIPFT) returns (address) {
-        return _author[tokenId];
+        return _contentAuthor[tokenId];
     }
 
     /**
@@ -56,26 +56,6 @@ contract IPFT1155 is ERC1155, IIPFT {
     }
 
     /**
-     * Always returns 32.
-     * See {IIPFT.multihashDigestSizeOf}.
-     */
-    function multihashDigestSizeOf(
-        uint256
-    ) public pure override(IIPFT) returns (uint32) {
-        return 32;
-    }
-
-    /**
-     * Return the token ID as the multihash digest.
-     * See {IIPFT.multihashDigestOf}.
-     */
-    function multihashDigestOf(
-        uint256 tokenId
-    ) external pure override(IIPFT) returns (bytes memory) {
-        return abi.encodePacked(tokenId);
-    }
-
-    /**
      * Return {IPFT.uri} + "/metadata.json".
      */
     function uri(
@@ -83,11 +63,7 @@ contract IPFT1155 is ERC1155, IIPFT {
     ) public view override(ERC1155) returns (string memory) {
         return
             string.concat(
-                LibIPFT.uri(
-                    contentCodecOf(id),
-                    multihashCodecOf(id),
-                    multihashDigestSizeOf(id)
-                ),
+                LibIPFT.uri(contentCodecOf(id), multihashCodecOf(id), 32),
                 "/metadata.json"
             );
     }
@@ -100,33 +76,45 @@ contract IPFT1155 is ERC1155, IIPFT {
      * @notice The content shall have an ERC1155 Metadata JSON file resolvable
      * at the "/metadata.json" path. See {uri} for a metadata URI example.
      *
-     * @param id           The token ID, also the keccak256 hash of `content`.
-     * @param content      The file containing an IPFT tag.
-     * @param contentCodec The content multicodec (e.g. `0x71` for dag-cbor).
-     * @param tagOffset    The IPFT tag offset in bytes.
-     * @param author       The to-become-token-author address.
+     * @param contentId     The token ID, also the keccak256 hash of `content`.
+     * @param contentAuthor The to-become-token-author address.
+     * @param content       The file containing an IPFT tag.
+     * @param contentCodec  The content multicodec (e.g. `0x71` for dag-cbor).
+     * @param ipftTagOffset The IPFT tag offset in bytes.
      */
     function _claim(
-        uint256 id,
+        uint256 contentId,
+        address contentAuthor,
         bytes calldata content,
         uint32 contentCodec,
-        uint32 tagOffset,
-        address author
+        uint32 ipftTagOffset
     ) internal {
         require(
-            msg.sender == author || isApprovedForAll(author, msg.sender),
+            msg.sender == contentAuthor ||
+                isApprovedForAll(contentAuthor, msg.sender),
             "IPFT1155: unauthorized"
         );
 
-        require(_author[id] == address(0), "IPFT1155: already claimed");
+        require(
+            _contentAuthor[contentId] == address(0),
+            "IPFT1155: already claimed"
+        );
 
-        LibIPFT.verifyTag(content, tagOffset, address(this), author);
-        require(uint256(keccak256(content)) == id, "IPFT1155: hash mismatch");
+        LibIPFT.verifyTag(
+            content,
+            ipftTagOffset,
+            address(this),
+            contentAuthor
+        );
+        require(
+            uint256(keccak256(content)) == contentId,
+            "IPFT1155: hash mismatch"
+        );
 
-        _author[id] = author;
-        _contentCodec[id] = contentCodec;
+        _contentAuthor[contentId] = contentAuthor;
+        _contentCodec[contentId] = contentCodec;
 
-        emit Claim(author, contentCodec, 0x1b, 32, abi.encodePacked(id));
+        emit Claim(contentId, contentAuthor, contentCodec, 0x1b);
     }
 
     /**
@@ -135,17 +123,17 @@ contract IPFT1155 is ERC1155, IIPFT {
      */
     function _mint(
         address to,
-        uint256 id,
+        uint256 contentId,
         uint256 amount,
         bytes calldata data
     ) internal override(ERC1155) {
         require(
-            _author[id] == msg.sender ||
-                isApprovedForAll(_author[id], msg.sender),
+            _contentAuthor[contentId] == msg.sender ||
+                isApprovedForAll(_contentAuthor[contentId], msg.sender),
             "IPFT1155: unauthorized"
         );
 
-        super._mint(to, id, amount, data);
+        super._mint(to, contentId, amount, data);
     }
 
     /**
@@ -153,18 +141,21 @@ contract IPFT1155 is ERC1155, IIPFT {
      */
     function _mintBatch(
         address to,
-        uint256[] calldata ids,
+        uint256[] calldata contentIds,
         uint256[] calldata amounts,
         bytes calldata data
     ) internal override(ERC1155) {
-        for (uint256 i = 0; i < ids.length; i++) {
+        for (uint256 i = 0; i < contentIds.length; i++) {
             require(
-                _author[ids[i]] == msg.sender ||
-                    isApprovedForAll(_author[ids[i]], msg.sender),
+                _contentAuthor[contentIds[i]] == msg.sender ||
+                    isApprovedForAll(
+                        _contentAuthor[contentIds[i]],
+                        msg.sender
+                    ),
                 "IPFT1155: unauthorized"
             );
         }
 
-        super._mintBatch(to, ids, amounts, data);
+        super._mintBatch(to, contentIds, amounts, data);
     }
 }

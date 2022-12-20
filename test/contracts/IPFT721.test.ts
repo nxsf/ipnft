@@ -49,10 +49,10 @@ describe("IPFT721", async () => {
         ipft721.mint(
           w0.address,
           block.cid.multihash.digest,
+          w0.address,
           block.bytes,
           block.cid.code,
-          tagOffset + 1, // This
-          w0.address
+          tagOffset + 1 // This
         )
       ).to.be.revertedWith("IPFT: invalid magic bytes");
     });
@@ -71,22 +71,20 @@ describe("IPFT721", async () => {
         ipft721.mint(
           w0.address,
           id,
+          w0.address,
           block.bytes,
           block.cid.code,
-          tagOffset,
-          w0.address
+          tagOffset
         )
       )
         .to.emit(ipft721, "Claim")
-        .withArgs(w0.address, DagCbor.code, keccak256.code, 32, idHex);
+        .withArgs(idHex, w0.address, DagCbor.code, keccak256.code);
 
       expect(await ipft721.balanceOf(w0.address)).to.eq(1);
       expect(await ipft721.contentAuthorOf(id)).to.eq(w0.address);
       expect(await ipft721.ownerOf(id)).to.eq(w0.address);
       expect(await ipft721.contentCodecOf(id)).to.eq(DagCbor.code);
       expect(await ipft721.multihashCodecOf(id)).to.eq(keccak256.code);
-      expect(await ipft721.multihashDigestSizeOf(id)).to.eq(32);
-      expect(await ipft721.multihashDigestOf(id)).to.eq(idHex);
       expect(await ipft721.tokenURI(id)).to.eq(
         "http://f01711b20{id}.ipfs/metadata.json"
       );

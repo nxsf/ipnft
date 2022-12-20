@@ -17,8 +17,8 @@ import "./IIPFT.sol";
  * the authorship of the content containing a valid IPFT tag.
  */
 contract IPFT721 is ERC721, IIPFT {
-    /// An IPFT author.
-    mapping(uint256 => address) _author;
+    /// An IPFT content author.
+    mapping(uint256 => address) _contentAuthor;
 
     /// An IPFT content codec (e.g. 0x71 for dag-cbor).
     mapping(uint256 => uint32) _contentCodec;
@@ -34,7 +34,7 @@ contract IPFT721 is ERC721, IIPFT {
     function contentAuthorOf(
         uint256 tokenId
     ) public view override(IIPFT) returns (address) {
-        return _author[tokenId];
+        return _contentAuthor[tokenId];
     }
 
     /**
@@ -57,26 +57,6 @@ contract IPFT721 is ERC721, IIPFT {
     }
 
     /**
-     * Always return 32.
-     * See {IIPFT.multihashDigestSizeOf}.
-     */
-    function multihashDigestSizeOf(
-        uint256
-    ) public pure override(IIPFT) returns (uint32) {
-        return 32;
-    }
-
-    /**
-     * Return the token ID as the multihash digest.
-     * See {IIPFT.multihashDigestOf}.
-     */
-    function multihashDigestOf(
-        uint256 tokenId
-    ) external pure override(IIPFT) returns (bytes memory) {
-        return abi.encodePacked(tokenId);
-    }
-
-    /**
      * Return {IPFT.uri} + "/metadata.json".
      */
     function tokenURI(
@@ -87,7 +67,7 @@ contract IPFT721 is ERC721, IIPFT {
                 LibIPFT.uri(
                     contentCodecOf(tokenId),
                     multihashCodecOf(tokenId),
-                    multihashDigestSizeOf(tokenId)
+                    32
                 ),
                 "/metadata.json"
             );
@@ -98,14 +78,14 @@ contract IPFT721 is ERC721, IIPFT {
      */
     function _mint(
         address to,
-        uint256 id,
+        uint256 contentId,
+        address contentAuthor,
         bytes calldata content,
         uint32 contentCodec,
-        uint32 tagOffset,
-        address author
+        uint32 ipftTagOffset
     ) internal {
-        _claim(id, content, contentCodec, tagOffset, author);
-        _mint(to, id);
+        _claim(contentId, contentAuthor, content, contentCodec, ipftTagOffset);
+        _mint(to, contentId);
     }
 
     /**
@@ -113,13 +93,21 @@ contract IPFT721 is ERC721, IIPFT {
      */
     function _safeMint(
         address to,
-        uint256 id,
+        uint256 contentId,
+        address contentAuthor,
         bytes calldata content,
         uint32 contentCodec,
-        uint32 tagOffset,
-        address author
+        uint32 ipftTagOffset
     ) internal {
-        _safeMint(to, id, content, contentCodec, tagOffset, author, "");
+        _safeMint(
+            to,
+            contentId,
+            contentAuthor,
+            content,
+            contentCodec,
+            ipftTagOffset,
+            ""
+        );
     }
 
     /**
@@ -127,15 +115,15 @@ contract IPFT721 is ERC721, IIPFT {
      */
     function _safeMint(
         address to,
-        uint256 id,
+        uint256 contentId,
+        address contentAuthor,
         bytes calldata content,
         uint32 contentCodec,
-        uint32 tagOffset,
-        address author,
-        bytes memory data
+        uint32 ipftTagOffset,
+        bytes memory mintData
     ) internal {
-        _claim(id, content, contentCodec, tagOffset, author);
-        _safeMint(to, id, data);
+        _claim(contentId, contentAuthor, content, contentCodec, ipftTagOffset);
+        _safeMint(to, contentId, mintData);
     }
 
     /**
@@ -144,39 +132,45 @@ contract IPFT721 is ERC721, IIPFT {
      * @notice The content shall have an ERC721 Metadata JSON file resolvable
      * at the "/metadata.json" path. See {tokenURI} for a metadata URI example.
      *
-     * @param id           The token id, also the keccak256 hash of `content`.
-     * @param content      The file containing an IPFT tag.
-     * @param contentCodec The content multicodec (e.g. `0x71` for dag-cbor).
-     * @param tagOffset    The IPFT tag offset in bytes.
-     * @param author       The to-become-token-author address.
+     * @param contentId     The token id, also the keccak256 hash of `content`.
+     * @param content       The file containing an IPFT tag.
+     * @param contentCodec  The content multicodec (e.g. `0x71` for dag-cbor).
+     * @param ipftTagOffset The IPFT tag offset in bytes.
+     * @param contentAuthor The to-become-token-author address.
      */
     function _claim(
-        uint256 id,
+        uint256 contentId,
+        address contentAuthor,
         bytes calldata content,
         uint32 contentCodec,
-        uint32 tagOffset,
-        address author
+        uint32 ipftTagOffset
     ) private {
         require(
-            msg.sender == author || isApprovedForAll(author, msg.sender),
+            msg.sender == contentAuthor ||
+                isApprovedForAll(contentAuthor, msg.sender),
             "IPFT721: unauthorized"
         );
 
-        LibIPFT.verifyTag(content, tagOffset, address(this), author);
+        LibIPFT.verifyTag(
+            content,
+            ipftTagOffset,
+            address(this),
+            contentAuthor
+        );
 
         // Check the content hash against the token ID.
         require(
-            uint256(keccak256(content)) == id,
+            uint256(keccak256(content)) == contentId,
             "IPFT721: content hash mismatch"
         );
 
-        // Set author.
-        _author[id] = author;
+        // Set content author.
+        _contentAuthor[contentId] = contentAuthor;
 
         // Set the multicodec.
-        _contentCodec[id] = contentCodec;
+        _contentCodec[contentId] = contentCodec;
 
         // Emit the IIPFT claim event.
-        emit Claim(author, contentCodec, 0x1b, 32, abi.encodePacked(id));
+        emit Claim(contentId, contentAuthor, contentCodec, 0x1b);
     }
 }

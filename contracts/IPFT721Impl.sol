@@ -11,12 +11,19 @@ contract IPFT721Impl is IPFT721 {
 
     function mint(
         address to,
-        uint256 id,
+        uint256 contentId,
+        address contentAuthor,
         bytes calldata content,
         uint32 contentCodec,
-        uint32 tagOffset,
-        address author
+        uint32 ipftTagOffset
     ) public {
-        _mint(to, id, content, contentCodec, tagOffset, author);
+        _mint(
+            to,
+            contentId,
+            contentAuthor,
+            content,
+            contentCodec,
+            ipftTagOffset
+        );
     }
 }
