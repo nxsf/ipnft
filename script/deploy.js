@@ -29,7 +29,7 @@ async function deploy(contractName, deployOptions = {}, ...args) {
 }
 
 async function main() {
-  await deploy("LibIPFT");
+  await deploy("LibIPNFT");
 }
 
 main()

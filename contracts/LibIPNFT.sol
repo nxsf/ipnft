@@ -2,74 +2,77 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title Interplanetary File Token (IPFT) library
+ * @title Interplanetary Non-fungible File Token (IPNFT) support library
+ *
+ * See {IIPNFT}.
  */
-library LibIPFT {
-    bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
+library LibIPNFT {
+    bytes16 private constant _HEX = "0123456789abcdef";
 
     /**
-     * Prove an IPFT authorship by verifying that `content`
-     * contains a nonced 56-byte IPFT tag at `offset`.
+     * Prove an IPNFT authorship by verifying that `content`
+     * contains a 56-byte IPFT[^1] at `ipftOffset`.
      *
-     * At `offset` the following byte sequence is expected:
+     * At `ipftOffset` the following byte sequence is expected:
      *
-     * magic    | version           | chain id        | contract address | author address
-     * 4 bytes  | 4 bytes           | 8 bytes         | 20 bytes         | 20 bytes
-     * `"ipft"` | `0x0165766d` [^1] | `block.chainid` | `contract_`      | `author`
+     * magic    | version           | chain id        | contract address  | author address
+     * 4 bytes  | 4 bytes           | 8 bytes         | 20 bytes          | 20 bytes
+     * `"ipft"` | `0x0165766d` [^2] | `block.chainid` | `contractAddress` | `contentAuthor`
      *
-     * [^1]: ASCII string `\x{01}evm`.
+     * @param content         The file containing an IPFT.
+     * @param ipftOffset      The IPFT offset in bytes.
+     * @param contractAddress The proving contract address.
+     * @param contentAuthor   The to-become-content-author address.
      *
-     * @param content   The file containing an IPFT tag.
-     * @param tagOffset The IPFT tag offset in bytes.
-     * @param contract_ The proving contract address.
-     * @param author    The to-become-token-author address.
+     * [^1]: Interplanetary File Tag.
+     * [^2]: ASCII string `\x{01}evm`.
      */
-    function verifyTag(
+    function verifyIpft(
         bytes calldata content,
-        uint32 tagOffset,
-        address contract_,
-        address author
+        uint32 ipftOffset,
+        address contractAddress,
+        address contentAuthor
     ) external view {
         // Check the content length so that it may contain the tag.
         require(
-            content.length >= tagOffset + 56,
-            "LibIPFT: content too short"
+            content.length >= ipftOffset + 56,
+            "LibIPNFT: content too short"
         );
 
         // Check the magic and version bytes.
         require(
-            _bytesToUint64(content, tagOffset) == 0x697066740165766d,
-            "LibIPFT: invalid magic bytes"
+            _bytesToUint64(content, ipftOffset) == 0x697066740165766d,
+            "LibIPNFT: invalid magic bytes"
         );
 
         // Check the chain id.
         require(
-            _bytesToUint64(content, tagOffset + 8) == uint64(block.chainid),
-            "LibIPFT: invalid chain id"
+            _bytesToUint64(content, ipftOffset + 8) == uint64(block.chainid),
+            "LibIPNFT: invalid chain id"
         );
 
         // Check the tag contract address.
         require(
-            _bytesToAddress(content, tagOffset + 16) == contract_,
-            "LibIPFT: invalid contract address"
+            _bytesToAddress(content, ipftOffset + 16) == contractAddress,
+            "LibIPNFT: invalid contract address"
         );
 
         // Check the tag author.
         require(
-            _bytesToAddress(content, tagOffset + 36) == author,
-            "LibIPFT: invalid author address"
+            _bytesToAddress(content, ipftOffset + 36) == contentAuthor,
+            "LibIPNFT: invalid author address"
         );
     }
 
     /**
-     * Return string `"http://f01[multicodec][multihash][digestSize]{id}.ipfs"`.
+     * Return string `"http://f01(multicodec)(multihash)(digestSize){id}.ipfs"`.
      *
      * ```
      * http:// f 01 71 1b 20 {id} .ipfs
      *         │ │  │  │  │  └ Literal "{id}" string (to be hex-interoplated client-side)[^1]
-     *         │ │  │  │  └ [digestSize], e.g. 32
-     *         │ │  │  └ [multihash], e.g. keccak-256
-     *         │ │  └ [multicodec], e.g. dag-cbor
+     *         │ │  │  │  └ `digestSize`, e.g. 32
+     *         │ │  │  └ `multihash`, e.g. keccak-256
+     *         │ │  └ `multicodec`, e.g. dag-cbor
      *         │ └ cidv1
      *         └ base16
      * ```
@@ -125,7 +128,7 @@ library LibIPFT {
         bytes memory buffer = new bytes(2 * length);
 
         for (uint8 i = 2 * length; i > 0; i--) {
-            buffer[i - 1] = _HEX_SYMBOLS[value & 0xf];
+            buffer[i - 1] = _HEX[value & 0xf];
             value >>= 4;
         }
 

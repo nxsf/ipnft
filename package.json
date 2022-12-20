@@ -1,11 +1,12 @@
 {
-  "name": "@nxsf/ipft",
-  "description": "Interplanetary File Token family contracts",
+  "name": "@nxsf/ipnft",
+  "description": "Interplanetary Non-fungible File Token",
   "author": {
     "name": "Onyx Software Foundation",
     "url": "http://nxsf.org",
     "email": "mail@nxsf.org"
   },
+  "repository": "git+https://github.com/nxsf/ipnft.git",
   "version": "0.3.1",
   "license": "MIT",
   "publishConfig": {
@@ -13,6 +14,7 @@
   },
   "type": "module",
   "scripts": {
+    "clean": "rm -r artifacts cache contracts/typechain dist",
     "typechain": "typechain --target ethers-v5 'artifacts/contracts/**/*[!.dbg].json' --out-dir contracts/typechain",
     "build": "hardhat compile && pnpm run typechain && tsc",
     "test": "pnpm run build && NODE_ENV=test mocha",

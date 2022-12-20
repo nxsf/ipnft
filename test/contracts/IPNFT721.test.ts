@@ -1,12 +1,12 @@
-// This test also covers "IPFT.sol".
+// This test also covers "IPNFT.sol".
 //
 
 import { expect, use } from "chai";
 import { deployContract, MockProvider, solidity } from "ethereum-waffle";
 import {
-  LibIPFT__factory,
-  IPFT721Impl__factory,
-  IPFT721Impl,
+  LibIPNFT__factory,
+  IPNFT721Impl__factory,
+  IPNFT721Impl,
 } from "../../contracts/typechain";
 import { contentBlock } from "./util";
 import * as DagCbor from "@ipld/dag-cbor";
@@ -14,53 +14,53 @@ import { keccak256 } from "@multiformats/sha3";
 
 use(solidity);
 
-describe("IPFT721", async () => {
+describe("IPNFT721", async () => {
   const provider = new MockProvider();
   const [w0, w1, w2] = provider.getWallets();
 
   let chainId: number;
-  let ipft721: IPFT721Impl;
+  let ipnft721: IPNFT721Impl;
 
   before(async () => {
     // FIXME: chainId = (await provider.getNetwork()).chainId;
     chainId = 1;
 
-    const libIpft = await deployContract(w0, LibIPFT__factory as any);
+    const libIpnft = await deployContract(w0, LibIPNFT__factory as any);
 
-    const ipft721Factory = new IPFT721Impl__factory(
+    const ipnft721Factory = new IPNFT721Impl__factory(
       {
-        "contracts/LibIPFT.sol:LibIPFT": libIpft.address,
+        "contracts/LibIPNFT.sol:LibIPNFT": libIpnft.address,
       },
       w0
     );
 
-    ipft721 = await ipft721Factory.deploy();
+    ipnft721 = await ipnft721Factory.deploy();
   });
 
   describe("minting", () => {
-    it("fails on invalid tag offset", async () => {
-      const { block, tagOffset } = await contentBlock(
+    it("fails on invalid IPFT offset", async () => {
+      const { block, ipftOffset } = await contentBlock(
         chainId,
-        ipft721.address,
+        ipnft721.address,
         w0.address
       );
 
       await expect(
-        ipft721.mint(
+        ipnft721.mint(
           w0.address,
           block.cid.multihash.digest,
           w0.address,
           block.bytes,
           block.cid.code,
-          tagOffset + 1 // This
+          ipftOffset + 1 // This
         )
-      ).to.be.revertedWith("IPFT: invalid magic bytes");
+      ).to.be.revertedWith("IPNFT: invalid magic bytes");
     });
 
     it("works", async () => {
-      const { block, tagOffset } = await contentBlock(
+      const { block, ipftOffset: tagOffset } = await contentBlock(
         chainId,
-        ipft721.address,
+        ipnft721.address,
         w0.address
       );
 
@@ -68,7 +68,7 @@ describe("IPFT721", async () => {
       const idHex = "0x" + Buffer.from(id).toString("hex");
 
       await expect(
-        ipft721.mint(
+        ipnft721.mint(
           w0.address,
           id,
           w0.address,
@@ -77,15 +77,16 @@ describe("IPFT721", async () => {
           tagOffset
         )
       )
-        .to.emit(ipft721, "Claim")
+        .to.emit(ipnft721, "Claim")
         .withArgs(idHex, w0.address, DagCbor.code, keccak256.code);
 
-      expect(await ipft721.balanceOf(w0.address)).to.eq(1);
-      expect(await ipft721.contentAuthorOf(id)).to.eq(w0.address);
-      expect(await ipft721.ownerOf(id)).to.eq(w0.address);
-      expect(await ipft721.contentCodecOf(id)).to.eq(DagCbor.code);
-      expect(await ipft721.multihashCodecOf(id)).to.eq(keccak256.code);
-      expect(await ipft721.tokenURI(id)).to.eq(
+      expect(await ipnft721.balanceOf(w0.address)).to.eq(1);
+      expect(await ipnft721.contentIdOf(id)).to.eq(idHex);
+      expect(await ipnft721.contentAuthorOf(id)).to.eq(w0.address);
+      expect(await ipnft721.ownerOf(id)).to.eq(w0.address);
+      expect(await ipnft721.contentCodecOf(id)).to.eq(DagCbor.code);
+      expect(await ipnft721.multihashCodecOf(id)).to.eq(keccak256.code);
+      expect(await ipnft721.tokenURI(id)).to.eq(
         "http://f01711b20{id}.ipfs/metadata.json"
       );
     });

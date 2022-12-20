@@ -1,4 +1,8 @@
-# Interplanetary File Token
+# Interplanetary Non-fungible File Token (IPNFT)
+
+An IPNFT is an on-chain, digital proof of authorship for an IPFS CID, tailored to existing NFT standards.
+
+In IPNFT, a token ID is also the 32-byte CID multihash digest.
 
 ## Deployment
 

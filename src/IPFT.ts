@@ -1,7 +1,8 @@
 /**
- * An IPFT tag is used to verify the authenticity of an IPFT.
+ * An Interplanetary File Tag (IPFT) is used
+ * to verify the authorship of an IPNFT.
  */
-export class Tag {
+export class IPFT {
   constructor(
     public readonly chainId: number,
     public readonly contractAddress: string,

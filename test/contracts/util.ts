@@ -1,4 +1,4 @@
-import { Tag } from "../../src/Tag";
+import { IPFT } from "../../src/IPFT";
 import { encode } from "multiformats/block";
 import { BlockView } from "multiformats/block/interface";
 import * as DagCbor from "@ipld/dag-cbor";
@@ -12,9 +12,9 @@ export async function contentBlock(
   metadataCID: CID = CID.parse("QmaozNR7DZHQK1ZcU9p7QdrshMvXqWK6gpu5rmrkPdT3L4")
 ): Promise<{
   block: BlockView;
-  tagOffset: number;
+  ipftOffset: number;
 }> {
-  const ipft = new Tag(chainId, contractAddress, authorAddress).toBytes();
+  const ipft = new IPFT(chainId, contractAddress, authorAddress).toBytes();
 
   const block = await encode({
     value: {
@@ -25,11 +25,11 @@ export async function contentBlock(
     hasher: keccak256,
   });
 
-  const tagOffset = indexOfMulti(block.bytes, ipft);
+  const ipftOffset = indexOfMulti(block.bytes, ipft);
 
   return {
     block,
-    tagOffset,
+    ipftOffset,
   };
 }
 
