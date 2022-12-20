@@ -20,10 +20,10 @@ import "./IIPNFT.sol";
  */
 contract IPNFT1155 is ERC1155, IIPNFT {
     /// An IPNFT content author.
-    mapping(uint256 => address) _contentAuthor;
+    mapping(uint256 => address) private _contentAuthor;
 
     /// An IPNFT content codec (e.g. 0x71 for dag-cbor).
-    mapping(uint256 => uint32) _contentCodec;
+    mapping(uint256 => uint32) private _contentCodec;
 
     constructor() ERC1155("") {}
 
