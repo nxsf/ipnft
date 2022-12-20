@@ -19,6 +19,9 @@ import "./IIPNFT.sol";
  * Only after claiming an IPNFT1155, it can be {_mint}ed.
  */
 contract IPNFT1155 is ERC1155, IIPNFT {
+    /// Multihash keccak-256 codec.
+    uint32 private constant _KECCAK256 = 0x1b;
+
     /// An IPNFT content author.
     mapping(uint256 => address) private _contentAuthor;
 
@@ -61,7 +64,7 @@ contract IPNFT1155 is ERC1155, IIPNFT {
     function multihashCodecOf(
         uint256
     ) public pure override(IIPNFT) returns (uint32) {
-        return 0x1b;
+        return _KECCAK256;
     }
 
     /**

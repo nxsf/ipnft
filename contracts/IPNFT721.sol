@@ -17,6 +17,9 @@ import "./IIPNFT.sol";
  * the authorship of the content containing a valid IP(N)FT tag.
  */
 contract IPNFT721 is ERC721, IIPNFT {
+    /// Multihash keccak-256 codec.
+    uint32 private constant _KECCAK256 = 0x1b;
+
     /// An IPNFT content author.
     mapping(uint256 => address) private _contentAuthor;
 
@@ -62,7 +65,7 @@ contract IPNFT721 is ERC721, IIPNFT {
     function multihashCodecOf(
         uint256
     ) public pure override(IIPNFT) returns (uint32) {
-        return 0x1b;
+        return _KECCAK256;
     }
 
     /**
