@@ -12,5 +12,5 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["contracts/typechain", "src", "test"]
+  "include": ["contracts/typechain", "src", "test", "index.ts"]
 }
