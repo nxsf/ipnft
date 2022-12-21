@@ -8,6 +8,15 @@ In IPNFT, a token ID is also the 32-byte CID multihash digest.
 
 1. Run `npm run deploy -- --network <network>`.
 
+### Known deployments
+
+#### Polygon Mumbai
+
+```
+LibIPNFT deployed to 0x5CA8bAEc0b929E7667E0c39F6440Dca5f69f72fC
+Transaction hash: 0xb2b2923941c306ea85e2ee9ad8d5b6fb0b8cd66f41df5d168dd5b700f32a3485
+```
+
 ## Development
 
 1. Run `npm run build`, then `npm run test`.
