@@ -60,5 +60,14 @@
     ".": "./dist/index.js",
     "./typechain": "./dist/contracts/typechain"
   },
-  "types": "dist/index.d.ts"
+  "typesVersions": {
+    "*": {
+      "*": [
+        "dist/*"
+      ],
+      "index.d.ts": [
+        "dist/index.d.ts"
+      ]
+    }
+  }
 }
