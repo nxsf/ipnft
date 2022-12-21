@@ -1,3 +1,5 @@
+import { Buffer } from "buffer";
+
 /**
  * An Interplanetary File Tag (IPFT) is used
  * to verify the authorship of an IPNFT.
