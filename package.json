@@ -54,7 +54,8 @@
     "dist/contracts/typechain",
     "dist/src",
     "contracts/**/*.sol",
-    "dist/index"
+    "dist/index.js",
+    "dist/index.d.ts"
   ],
   "exports": {
     ".": "./dist/index.js",
