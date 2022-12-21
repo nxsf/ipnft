@@ -9,9 +9,6 @@
   "repository": "git+https://github.com/nxsf/ipnft.git",
   "version": "0.4.0-rc4",
   "license": "MIT",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "type": "module",
   "scripts": {
     "clean": "rm -r artifacts cache contracts/typechain dist",
